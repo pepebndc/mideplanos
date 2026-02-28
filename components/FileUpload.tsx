@@ -1,8 +1,10 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Project } from '@/types';
 import { listProjects, formatProjectDate } from '@/utils/storage';
+import GridCanvas from '@/components/GridCanvas';
 
 interface FileUploadProps {
   onFileLoaded: (file: File) => void;
@@ -55,7 +57,7 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
         <div className="border-b border-[#C8C4BB]/60" style={{ backgroundColor: 'rgba(241,239,234,0.85)', backdropFilter: 'blur(4px)' }}>
           <div className="max-w-2xl mx-auto px-8 h-14 flex items-center justify-between">
             {/* Wordmark */}
-            <div className="flex items-center gap-2.5">
+            <Link href="/" className="flex items-center gap-2.5 hover:opacity-75 transition-opacity">
               <DimensionIcon size={22} />
               <span
                 className="text-sm font-bold tracking-tight"
@@ -63,7 +65,7 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
               >
                 mideplanos
               </span>
-            </div>
+            </Link>
 
             {recentProjects.length > 0 && (
               <button
@@ -248,148 +250,6 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
         </div>
       </div>
     </div>
-  );
-}
-
-// ─── Animated grid canvas ────────────────────────────────────────────────────
-
-function GridCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Raw mouse position
-    const mouse = { x: -2000, y: -2000 };
-    // Smoothed position with lag (feels like a soft light source)
-    const smooth = { x: -2000, y: -2000 };
-
-    let w = 0;
-    let h = 0;
-
-    const resize = () => {
-      w = window.innerWidth;
-      h = window.innerHeight;
-      canvas.width = w;
-      canvas.height = h;
-    };
-    resize();
-
-    const onMouseMove = (e: MouseEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      mouse.x = e.touches[0].clientX;
-      mouse.y = e.touches[0].clientY;
-    };
-
-    window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-
-    const GRID = 48;
-    const MOUSE_R = 220;
-    const LERP = 0.07; // smoothing — lower = more lag
-
-    let raf: number;
-
-    const draw = (ts: number) => {
-      // Smooth mouse towards raw position
-      smooth.x += (mouse.x - smooth.x) * LERP;
-      smooth.y += (mouse.y - smooth.y) * LERP;
-
-      // Slow sinusoidal drift of the grid
-      const t = ts * 0.001;
-      const ox = Math.sin(t * 0.11) * GRID * 0.38;
-      const oy = Math.cos(t * 0.08) * GRID * 0.28;
-
-      // Grid origin (always start one cell before 0 so grid covers edges)
-      const gx0 = ((ox % GRID) - GRID);
-      const gy0 = ((oy % GRID) - GRID);
-
-      ctx.clearRect(0, 0, w, h);
-
-      // Background fill
-      ctx.fillStyle = '#F1EFEA';
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.lineWidth = 1;
-
-      // ── Vertical lines ────────────────────────────────────────
-      for (let x = gx0; x < w + GRID; x += GRID) {
-        const dx = Math.abs(x - smooth.x);
-        const glow = Math.max(0, 1 - dx / MOUSE_R);
-        const alpha = 0.055 + glow * 0.13;
-        ctx.strokeStyle = `rgba(26,44,61,${alpha.toFixed(3)})`;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-
-      // ── Horizontal lines ──────────────────────────────────────
-      for (let y = gy0; y < h + GRID; y += GRID) {
-        const dy = Math.abs(y - smooth.y);
-        const glow = Math.max(0, 1 - dy / MOUSE_R);
-        const alpha = 0.055 + glow * 0.13;
-        ctx.strokeStyle = `rgba(26,44,61,${alpha.toFixed(3)})`;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
-      // ── Intersection dots near cursor ─────────────────────────
-      for (let x = gx0; x < w + GRID; x += GRID) {
-        if (Math.abs(x - smooth.x) > MOUSE_R) continue;
-        for (let y = gy0; y < h + GRID; y += GRID) {
-          const dist = Math.hypot(x - smooth.x, y - smooth.y);
-          if (dist >= MOUSE_R) continue;
-          const t2 = 1 - dist / MOUSE_R;
-          const ease = t2 * t2 * t2; // cubic — tight core, soft falloff
-          ctx.beginPath();
-          ctx.arc(x, y, 0.5 + ease * 3, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(26,44,61,${(ease * 0.38).toFixed(3)})`;
-          ctx.fill();
-        }
-      }
-
-      // ── Soft radial spotlight following smoothed cursor ───────
-      if (smooth.x > -1000) {
-        const grad = ctx.createRadialGradient(
-          smooth.x, smooth.y, 0,
-          smooth.x, smooth.y, MOUSE_R * 1.6,
-        );
-        grad.addColorStop(0, 'rgba(255,255,252,0.10)');
-        grad.addColorStop(0.4, 'rgba(255,255,252,0.04)');
-        grad.addColorStop(1, 'rgba(255,255,252,0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('touchmove', onTouchMove);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 pointer-events-none"
-      style={{ zIndex: 0 }}
-    />
   );
 }
 
