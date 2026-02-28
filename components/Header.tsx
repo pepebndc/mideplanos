@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { CalibrationData, CanvasItem, SaveStatus } from '@/types';
-import { FolderOpen, Plus, ChevronLeft, ChevronRight, CloudUpload, CloudCheck, Loader2, Folder } from 'lucide-react';
+import { FolderOpen, Plus, ChevronLeft, ChevronRight, Save, Loader2, Folder } from 'lucide-react';
 
 interface HeaderProps {
   canvasItems: CanvasItem[];
@@ -71,28 +71,23 @@ export default function Header({
 
       <div className="h-5 w-px bg-gray-200 shrink-0" />
 
-      {/* Project name + inline save-status */}
+      {/* Project name + save-status pill */}
       {canvasItems.length > 0 && (
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+          <span className="text-sm font-medium truncate max-w-[200px]" style={{ color: '#1A2C3D' }}>
             {projectName}
           </span>
-
-          {/* Save-status pill */}
           <span
-            className={`
-              inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0
-              transition-all duration-200
-              ${animate ? 'scale-110' : 'scale-100'}
-              ${isSaved ? 'text-green-600 bg-green-50' : isSaving ? 'text-blue-500 bg-blue-50' : isUnsaved ? 'text-amber-600 bg-amber-50' : 'text-gray-400 bg-gray-50'}
-            `}
+            className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0 transition-all duration-200 ${animate ? 'scale-110' : 'scale-100'}`}
+            style={{
+              color: isSaving ? '#1A2C3D' : isSaved ? '#9A9590' : '#8B6914',
+              backgroundColor: isSaving ? 'rgba(26,44,61,0.07)' : isSaved ? 'rgba(26,44,61,0.04)' : 'rgba(180,140,40,0.1)',
+            }}
           >
             {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
-            {isSaved && <CloudCheck className="w-3 h-3" />}
-            {isUnsaved && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />}
-            {isSaving && 'Guardando…'}
-            {isSaved && 'Guardado'}
-            {isUnsaved && 'Sin guardar'}
+            {isSaved && <Save className="w-3 h-3" />}
+            {isUnsaved && <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#B87F14' }} />}
+            {isSaving ? 'Guardando…' : isSaved ? 'Guardado' : 'Sin guardar'}
           </span>
         </div>
       )}
@@ -132,39 +127,13 @@ export default function Header({
 
         {canvasItems.length > 0 && (
           <>
-            {/* Save button — icon morphs with status */}
-            <button
-              onClick={onSave}
-              disabled={isSaving || isSaved}
-              title={isSaved ? 'Guardado' : isSaving ? 'Guardando…' : 'Guardar proyecto (Ctrl+S)'}
-              className={`
-                relative flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5
-                border transition-all duration-200
-                ${isSaved
-                  ? 'text-green-600 bg-green-50 border-green-100 cursor-default'
-                  : isSaving
-                  ? 'text-blue-400 bg-blue-50 border-blue-100 cursor-default'
-                  : 'text-white bg-blue-600 hover:bg-blue-700 border-blue-600 active:scale-95'
-                }
-              `}
-            >
-              <span className={`transition-transform duration-200 ${animate ? 'scale-125' : 'scale-100'}`}>
-                {isSaving
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : isSaved
-                  ? <CloudCheck className="w-4 h-4" />
-                  : <CloudUpload className="w-4 h-4" />
-                }
-              </span>
-              <span>
-                {isSaving ? 'Guardando…' : isSaved ? 'Guardado' : 'Guardar'}
-              </span>
-            </button>
-
             {/* Add image */}
             <button
               onClick={() => addInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-colors border border-gray-200"
+              className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors border"
+              style={{ color: '#7A8A99', backgroundColor: 'rgba(26,44,61,0.04)', borderColor: '#C8C4BB' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#1A2C3D'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7A8A99'; }}
             >
               <Plus className="w-4 h-4" />
               Añadir
@@ -182,7 +151,10 @@ export default function Header({
         {/* Projects history */}
         <button
           onClick={onOpenProjects}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-colors border border-gray-200"
+          className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors border"
+          style={{ color: '#7A8A99', backgroundColor: 'rgba(26,44,61,0.04)', borderColor: '#C8C4BB' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#1A2C3D'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7A8A99'; }}
         >
           <Folder className="w-4 h-4" />
           Proyectos
@@ -191,7 +163,10 @@ export default function Header({
         {/* New / open */}
         <button
           onClick={onNewFile}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-colors border border-gray-200"
+          className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors border"
+          style={{ color: '#7A8A99', backgroundColor: 'rgba(26,44,61,0.04)', borderColor: '#C8C4BB' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#1A2C3D'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7A8A99'; }}
         >
           <FolderOpen className="w-4 h-4" />
           Nuevo
