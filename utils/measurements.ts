@@ -49,14 +49,14 @@ export const UNIT_LABELS: Record<Unit, string> = {
 };
 
 export const MEASUREMENT_COLORS = [
-  '#3B82F6', // blue
-  '#10B981', // green
-  '#F59E0B', // amber
-  '#EF4444', // red
-  '#8B5CF6', // purple
-  '#EC4899', // pink
-  '#06B6D4', // cyan
-  '#F97316', // orange
+  '#2D6AE0', // blueprint blue
+  '#0A9070', // teal
+  '#D97000', // amber
+  '#C8312A', // brick red
+  '#7038B0', // plum
+  '#0B8FAB', // steel cyan
+  '#5A8A28', // leaf green
+  '#C55A1E', // terracotta
 ];
 
 export function getNextColor(index: number): string {

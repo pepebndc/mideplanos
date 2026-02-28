@@ -10,7 +10,7 @@ Herramienta web gratuita para medir distancias y áreas en planos de construcci�
 - **Calibración de escala**: Traza una línea de referencia conocida y asigna la medida real para obtener resultados en unidades reales (m, cm, mm, ft, in)
 - **Zoom y pan**: Rueda del ratón para zoom, modo selección para arrastrar
 - **Lista de medidas**: Renombra, elimina y exporta medidas a CSV
-- **Atajos de teclado**: S (selección), C (calibrar), D (distancia), A (área), Esc (cancelar)
+- **Atajos de teclado**: S (selección), C (calibrar), D (distancia), A (área), Esc (cancelar), Ctrl+Z / ⌘Z (deshacer)
 
 ## Uso
 

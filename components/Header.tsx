@@ -48,7 +48,7 @@ export default function Header({
     if (file) { onAddFile(file); e.target.value = ''; }
   };
 
-  const isSaved = saveStatus === 'saved';
+  const isSaved = saveStatus === 'saved' || saveStatus === 'idle';
   const isSaving = saveStatus === 'saving';
   const isUnsaved = saveStatus === 'unsaved';
 
@@ -57,13 +57,16 @@ export default function Header({
 
       {/* Brand */}
       <div className="flex items-center gap-2 mr-1 shrink-0">
-        <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center">
-          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <span className="font-bold text-gray-900 text-sm tracking-tight">mideplanos</span>
+        {/* Dimension-line mark */}
+        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" aria-hidden>
+          <line x1="2" y1="11" x2="30" y2="11" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="2" y1="6.5" x2="2" y2="15.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" />
+          <line x1="30" y1="6.5" x2="30" y2="15.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" />
+          <line x1="2" y1="22" x2="19" y2="22" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" strokeOpacity="0.35" />
+          <line x1="2" y1="17.5" x2="2" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
+          <line x1="19" y1="17.5" x2="19" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
+        </svg>
+        <span className="font-bold text-gray-900 text-sm tracking-tight" style={{ letterSpacing: '-0.02em' }}>mideplanos</span>
       </div>
 
       <div className="h-5 w-px bg-gray-200 shrink-0" />

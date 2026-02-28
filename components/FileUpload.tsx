@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { Upload, FileImage, FileText, FolderOpen, Clock } from 'lucide-react';
 import { Project } from '@/types';
 import { listProjects, formatProjectDate } from '@/utils/storage';
 
@@ -11,6 +10,9 @@ interface FileUploadProps {
   onOpenProjects: () => void;
 }
 
+const ACCEPTED = 'image/jpeg,image/png,image/webp,image/tiff,application/pdf';
+const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'application/pdf'];
+
 export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -18,14 +20,13 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
 
   useEffect(() => {
     listProjects()
-      .then((projects) => setRecentProjects(projects.slice(0, 4)))
+      .then((p) => setRecentProjects(p.slice(0, 4)))
       .catch(() => {});
   }, []);
 
   const handleFile = (file: File) => {
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'application/pdf'];
-    if (!validTypes.includes(file.type)) {
-      alert('Formato no soportado. Por favor, sube una imagen (JPG, PNG, WEBP) o un PDF.');
+    if (!VALID_TYPES.includes(file.type)) {
+      alert('Formato no soportado. Por favor, usa JPG, PNG, WEBP o PDF.');
       return;
     }
     onFileLoaded(file);
@@ -44,95 +45,201 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-gray-50 overflow-y-auto">
-      <div className="w-full max-w-xl mx-auto px-6 py-10">
-        {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
+    <div
+      className="h-full overflow-y-auto"
+      style={{
+        backgroundColor: '#F1EFEA',
+        backgroundImage:
+          'linear-gradient(rgba(26,44,61,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(26,44,61,0.055) 1px, transparent 1px)',
+        backgroundSize: '48px 48px',
+      }}
+    >
+      {/* Top rule */}
+      <div className="border-b border-[#C8C4BB]/60" style={{ backgroundColor: '#F1EFEA' }}>
+        <div className="max-w-2xl mx-auto px-8 h-14 flex items-center justify-between">
+          {/* Wordmark */}
+          <div className="flex items-center gap-2.5">
+            <DimensionIcon size={22} />
+            <span
+              className="text-sm font-bold tracking-tight"
+              style={{ color: '#1A2C3D', letterSpacing: '-0.02em' }}
+            >
+              mideplanos
+            </span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">mideplanos</h1>
-          <p className="text-gray-500 mt-2 text-sm">Mide distancias y áreas en planos de construcción</p>
+
+          {recentProjects.length > 0 && (
+            <button
+              onClick={onOpenProjects}
+              className="text-xs font-medium transition-colors"
+              style={{ color: '#7A8A99' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#7A8A99')}
+            >
+              Ver todos los proyectos →
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="max-w-2xl mx-auto px-8 py-16">
+
+        {/* Headline */}
+        <div className="mb-12">
+          <h1
+            className="text-4xl font-bold tracking-tight mb-3"
+            style={{ color: '#1A2C3D', letterSpacing: '-0.03em' }}
+          >
+            Medición de planos.
+          </h1>
+          <p className="text-sm" style={{ color: '#7A8A99' }}>
+            Carga una imagen o PDF y mide distancias, áreas y perímetros con calibración a escala real.
+          </p>
         </div>
 
         {/* Drop zone */}
         <div
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
+          onDragLeave={(e) => {
+            // Only leave if exiting the zone entirely
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
+          }}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 ${
-            isDragging
-              ? 'border-blue-500 bg-blue-50 scale-[1.02]'
-              : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50/50'
-          }`}
+          className="relative cursor-pointer select-none transition-all duration-150"
+          style={{
+            border: isDragging
+              ? '1.5px dashed #2D6AE0'
+              : '1.5px dashed #B5B0A3',
+            backgroundColor: isDragging ? 'rgba(45,106,224,0.04)' : 'rgba(255,255,255,0.55)',
+            borderRadius: '3px',
+            padding: '52px 40px',
+          }}
         >
-          <Upload className={`mx-auto mb-4 w-12 h-12 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
-          <p className="text-base font-semibold text-gray-700">
-            {isDragging ? 'Suelta el archivo aquí' : 'Arrastra tu plano aquí'}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">o haz clic para seleccionar un archivo</p>
-          <div className="flex items-center justify-center gap-4 mt-5">
-            <span className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
-              <FileImage className="w-3.5 h-3.5" /> JPG · PNG · WEBP
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
-              <FileText className="w-3.5 h-3.5" /> PDF
-            </span>
+          {/* Corner marks — technical drawing detail */}
+          {['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'].map((pos, i) => (
+            <span
+              key={i}
+              className={`absolute ${pos} w-3 h-3`}
+              style={{
+                borderColor: isDragging ? '#2D6AE0' : '#B5B0A3',
+                borderStyle: 'solid',
+                borderWidth: 0,
+                ...(i === 0 && { borderTopWidth: '1.5px', borderLeftWidth: '1.5px' }),
+                ...(i === 1 && { borderTopWidth: '1.5px', borderRightWidth: '1.5px' }),
+                ...(i === 2 && { borderBottomWidth: '1.5px', borderLeftWidth: '1.5px' }),
+                ...(i === 3 && { borderBottomWidth: '1.5px', borderRightWidth: '1.5px' }),
+              }}
+            />
+          ))}
+
+          <div className="text-center">
+            <p
+              className="text-base font-medium mb-1 transition-colors"
+              style={{ color: isDragging ? '#2D6AE0' : '#1A2C3D' }}
+            >
+              {isDragging ? 'Suelta aquí' : 'Arrastra un plano aquí'}
+            </p>
+            <p className="text-xs mb-6" style={{ color: '#9A9590' }}>
+              JPG · PNG · WEBP · PDF
+            </p>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+              className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2 transition-all duration-150"
+              style={{
+                color: isDragging ? '#2D6AE0' : '#1A2C3D',
+                border: `1px solid ${isDragging ? '#2D6AE0' : '#1A2C3D'}`,
+                borderRadius: '2px',
+                backgroundColor: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#1A2C3D';
+                e.currentTarget.style.color = '#F1EFEA';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = isDragging ? '#2D6AE0' : '#1A2C3D';
+              }}
+            >
+              Seleccionar archivo
+            </button>
           </div>
         </div>
 
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf"
+          accept={ACCEPTED}
           onChange={handleChange}
           className="hidden"
         />
 
         {/* Recent projects */}
         {recentProjects.length > 0 && (
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-600">
-                <Clock className="w-4 h-4" />
-                Proyectos recientes
-              </div>
-              <button
-                onClick={onOpenProjects}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Ver todos →
-              </button>
+          <div className="mt-14">
+            {/* Section label */}
+            <div className="flex items-center gap-4 mb-5">
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#9A9590' }}>
+                Recientes
+              </span>
+              <div className="flex-1 h-px" style={{ backgroundColor: '#C8C4BB' }} />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               {recentProjects.map((project) => (
                 <button
                   key={project.id}
                   onClick={() => onLoadProject(project)}
-                  className="group flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 text-left hover:border-blue-300 hover:shadow-sm transition-all"
+                  className="group flex items-stretch gap-0 text-left overflow-hidden transition-all duration-150"
+                  style={{
+                    border: '1px solid #C8C4BB',
+                    borderRadius: '2px',
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#1A2C3D';
+                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.95)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#C8C4BB';
+                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.7)';
+                  }}
                 >
-                  {/* Mini thumbnail */}
-                  <div className="w-14 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-100">
+                  {/* Thumbnail */}
+                  <div
+                    className="w-16 shrink-0 overflow-hidden"
+                    style={{ backgroundColor: '#E4E2DC', borderRight: '1px solid #C8C4BB' }}
+                  >
                     {project.thumbnail ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={project.thumbnail} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={project.thumbnail}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="flex items-center justify-center h-full">
-                        <FolderOpen className="w-5 h-5 text-gray-300" />
+                        <DimensionIcon size={16} color="#9A9590" />
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 truncate group-hover:text-blue-700">
+
+                  {/* Info */}
+                  <div className="flex-1 px-3 py-2.5 min-w-0">
+                    <p
+                      className="text-xs font-semibold truncate"
+                      style={{ color: '#1A2C3D' }}
+                    >
                       {project.name}
                     </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{formatProjectDate(project.updatedAt)}</p>
-                    <p className="text-[10px] text-gray-300">
+                    <p className="text-[10px] mt-0.5" style={{ color: '#9A9590' }}>
+                      {formatProjectDate(project.updatedAt)}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: '#B5B0A3' }}>
                       {project.measurements.length} medida{project.measurements.length !== 1 ? 's' : ''}
+                      {project.canvasItems.length > 1 && ` · ${project.canvasItems.length} imágenes`}
                     </p>
                   </div>
                 </button>
@@ -141,20 +248,34 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
           </div>
         )}
 
-        {/* Features */}
-        <div className="grid grid-cols-3 gap-3 mt-8">
-          {[
-            { icon: '📏', label: 'Medir distancias' },
-            { icon: '📐', label: 'Calcular áreas' },
-            { icon: '💾', label: 'Guardar proyectos' },
-          ].map((f) => (
-            <div key={f.label} className="text-center p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-              <div className="text-2xl mb-1">{f.icon}</div>
-              <p className="text-xs text-gray-600 font-medium">{f.label}</p>
-            </div>
-          ))}
-        </div>
+        {/* Footer */}
+        <p className="text-[11px] text-center mt-14" style={{ color: '#B5B0A3' }}>
+          Todo se procesa localmente en tu navegador — ningún archivo se envía a servidores.
+        </p>
       </div>
     </div>
+  );
+}
+
+/** Inline SVG of the dimension-line brand mark */
+function DimensionIcon({ size = 24, color = '#1A2C3D' }: { size?: number; color?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      {/* Full-width dimension line */}
+      <line x1="2" y1="11" x2="30" y2="11" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      <line x1="2" y1="6.5" x2="2" y2="15.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="30" y1="6.5" x2="30" y2="15.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      {/* Shorter dimension line */}
+      <line x1="2" y1="22" x2="19" y2="22" stroke={color} strokeWidth="3" strokeLinecap="round" strokeOpacity="0.4" />
+      <line x1="2" y1="17.5" x2="2" y2="26.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" />
+      <line x1="19" y1="17.5" x2="19" y2="26.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" />
+    </svg>
   );
 }

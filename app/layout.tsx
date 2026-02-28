@@ -5,14 +5,13 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'mideplanos — Mide distancias y áreas en planos',
-  description:
-    'Herramienta gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala real. Sin registro.',
+  title: 'mideplanos — Medición de planos técnicos',
+  description: 'Mide distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala real. Sin registro, sin servidor.',
   keywords: ['medir planos', 'distancias plano', 'área plano', 'escala plano', 'construcción'],
   authors: [{ name: 'mideplanos' }],
   openGraph: {
-    title: 'mideplanos — Mide distancias y áreas en planos',
-    description: 'Herramienta gratuita para medir planos de construcción con calibración de escala real.',
+    title: 'mideplanos — Medición de planos técnicos',
+    description: 'Mide distancias y áreas en planos de construcción con calibración de escala real.',
     type: 'website',
   },
 };

@@ -76,14 +76,50 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   const [cropState, setCropState] = useState<CropState | null>(null);
   // Item being moved - local override so parent only updates on mouseup
   const [draggedItem, setDraggedItem] = useState<{ id: string; x: number; y: number } | null>(null);
+  // Measurement being moved - local override so parent only updates on mouseup
+  const [draggedMeasurement, setDraggedMeasurement] = useState<{ id: string; points: Point[] } | null>(null);
 
   const isPanRef = useRef(false);
   const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  // Space bar temporarily activates pan (like Figma)
+  const spaceHeldRef = useRef(false);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+      if (e.code === 'Space' && !spaceHeldRef.current) {
+        e.preventDefault();
+        spaceHeldRef.current = true;
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        spaceHeldRef.current = false;
+        // If we were panning via space, release the pan
+        if (isPanRef.current) {
+          isPanRef.current = false;
+          panStartRef.current = null;
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
+
   const itemDragRef = useRef<{
     itemId: string;
     screenStart: Point;
     origX: number;
     origY: number;
+  } | null>(null);
+  const measurementDragRef = useRef<{
+    measurementId: string;
+    screenStart: Point;
+    origPoints: Point[];
   } | null>(null);
   const cropDrawingRef = useRef(false);
 
@@ -273,8 +309,11 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       }
     });
 
-    // Measurements
-    measurements.forEach((m) => drawMeasurement(ctx, m, m.id === selectedMeasurementId, scale));
+    // Measurements (apply drag override for the one being moved)
+    measurements.forEach((m) => {
+      const override = draggedMeasurement?.id === m.id ? { ...m, points: draggedMeasurement.points } : m;
+      drawMeasurement(ctx, override, m.id === selectedMeasurementId, scale);
+    });
 
     // In-progress drawing
     if (drawState.isDrawing) {
@@ -288,7 +327,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     }
 
     ctx.restore();
-  }, [transform, drawState, measurements, selectedMeasurementId, selectedItemId, mousePos, activeTool, canvasItems, cropState, draggedItem]);
+  }, [transform, drawState, measurements, selectedMeasurementId, selectedItemId, mousePos, activeTool, canvasItems, cropState, draggedItem, draggedMeasurement]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -331,8 +370,15 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     const screenPt = getScreenPos(e);
     const vpt = canvasToVirtual(screenPt.x, screenPt.y);
 
-    // Middle mouse = always pan
-    if (e.button === 1) {
+    // Middle mouse or Space held = always pan
+    if (e.button === 1 || spaceHeldRef.current) {
+      isPanRef.current = true;
+      panStartRef.current = { x: screenPt.x, y: screenPt.y, ox: transform.offsetX, oy: transform.offsetY };
+      return;
+    }
+
+    // ── Pan tool ─────────────────────────────────────────────────────────────
+    if (activeTool === 'pan') {
       isPanRef.current = true;
       panStartRef.current = { x: screenPt.x, y: screenPt.y, ox: transform.offsetX, oy: transform.offsetY };
       return;
@@ -351,16 +397,20 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
           origY: hit.y,
         };
       } else {
-        // Check measurement selection
+        // Check measurement hit
         const mHit = findMeasurementAt(vpt);
         if (mHit) {
           onSelectMeasurement(mHit.id);
           onSelectItem(null);
+          measurementDragRef.current = {
+            measurementId: mHit.id,
+            screenStart: screenPt,
+            origPoints: mHit.points,
+          };
         } else {
           onSelectItem(null);
           onSelectMeasurement(null);
-          isPanRef.current = true;
-          panStartRef.current = { x: screenPt.x, y: screenPt.y, ox: transform.offsetX, oy: transform.offsetY };
+          // Select tool does NOT pan — use the pan tool or Space+drag for that
         }
       }
       return;
@@ -455,6 +505,18 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       return;
     }
 
+    // Measurement drag
+    if (measurementDragRef.current) {
+      const { measurementId, screenStart, origPoints } = measurementDragRef.current;
+      const dx = (screenPt.x - screenStart.x) / transform.scale;
+      const dy = (screenPt.y - screenStart.y) / transform.scale;
+      setDraggedMeasurement({
+        id: measurementId,
+        points: origPoints.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+      });
+      return;
+    }
+
     // Crop drawing
     if (cropDrawingRef.current && cropState?.startPt && cropState.itemId) {
       const item = canvasItems.find((i) => i.id === cropState.itemId);
@@ -483,6 +545,18 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       );
       setDraggedItem(null);
       itemDragRef.current = null;
+    }
+
+    // End measurement drag
+    if (measurementDragRef.current && draggedMeasurement) {
+      const { measurementId } = measurementDragRef.current;
+      onMeasurementsChange(
+        measurements.map((m) =>
+          m.id === measurementId ? { ...m, points: draggedMeasurement.points } : m
+        )
+      );
+      setDraggedMeasurement(null);
+      measurementDragRef.current = null;
     }
 
     // End crop drawing
@@ -673,9 +747,15 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   // ── Cursor ───────────────────────────────────────────────────────────────────
 
   const getCursor = () => {
-    if (itemDragRef.current) return 'grabbing';
+    if (itemDragRef.current || measurementDragRef.current) return 'grabbing';
     if (isPanRef.current) return 'grabbing';
-    if (activeTool === 'select') return 'grab';
+    if (activeTool === 'pan') return 'grab';
+    if (activeTool === 'select') {
+      const hoverM = findMeasurementAt(mousePos);
+      const hoverItem = hitTestItems(mousePos);
+      if (hoverM || hoverItem) return 'grab';
+      return 'default';
+    }
     if (activeTool === 'delete') return 'not-allowed';
     if (activeTool === 'crop') return cropDrawingRef.current ? 'crosshair' : 'default';
     return 'crosshair';

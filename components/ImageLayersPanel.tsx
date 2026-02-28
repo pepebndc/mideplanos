@@ -1,7 +1,7 @@
 'use client';
 
 import { CanvasItem } from '@/types';
-import { Trash2, ChevronUp, ChevronDown, Crop, RotateCcw, Layers } from 'lucide-react';
+import { Trash2, ChevronUp, ChevronDown, Crop, RotateCcw } from 'lucide-react';
 
 interface ImageLayersPanelProps {
   items: CanvasItem[];
@@ -32,16 +32,26 @@ export default function ImageLayersPanel({
   if (items.length === 0) return null;
 
   return (
-    <div className="border-b border-gray-100">
+    <div style={{ borderBottom: '1px solid #C8C4BB' }}>
       {/* Header */}
-      <div className="px-4 py-2.5 flex items-center gap-2 bg-gray-50 border-b border-gray-100">
-        <Layers className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Imágenes</span>
-        <span className="ml-auto text-xs text-gray-400 font-medium">{items.length}</span>
+      <div
+        className="px-4 py-2.5 flex items-center gap-3"
+        style={{ borderBottom: '1px solid #C8C4BB', backgroundColor: '#F1EFEA' }}
+      >
+        <span
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: '#9A9590' }}
+        >
+          Imágenes
+        </span>
+        <div className="flex-1 h-px" style={{ backgroundColor: '#C8C4BB' }} />
+        <span className="text-[10px] font-medium" style={{ color: '#B5B0A3' }}>
+          {items.length}
+        </span>
       </div>
 
       {/* Item list */}
-      <ul className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+      <ul className="max-h-52 overflow-y-auto" style={{ backgroundColor: '#F1EFEA' }}>
         {sorted.map((item, idx) => {
           const isSelected = item.id === selectedItemId;
           const cropped = isCropped(item);
@@ -52,14 +62,28 @@ export default function ImageLayersPanel({
             <li
               key={item.id}
               onClick={() => onSelectItem(isSelected ? null : item.id)}
-              className={`px-3 py-2 cursor-pointer transition-colors flex items-center gap-2 ${
-                isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : 'hover:bg-gray-50 border-l-2 border-transparent'
-              }`}
+              className="cursor-pointer transition-colors flex items-center gap-2 px-3 py-2"
+              style={{
+                borderLeft: isSelected ? '2px solid #1A2C3D' : '2px solid transparent',
+                backgroundColor: isSelected ? 'rgba(26,44,61,0.06)' : 'transparent',
+                borderBottom: '1px solid #E4E2DC',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(26,44,61,0.03)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+              }}
             >
-              {/* Thumbnail preview */}
+              {/* Thumbnail */}
               <div
-                className="w-10 h-10 rounded-md bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200"
-                style={{ position: 'relative' }}
+                className="w-9 h-9 shrink-0 overflow-hidden"
+                style={{
+                  border: '1px solid #C8C4BB',
+                  borderRadius: '2px',
+                  backgroundColor: '#E4E2DC',
+                  position: 'relative',
+                }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -76,60 +100,72 @@ export default function ImageLayersPanel({
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-700 truncate">{item.name}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">
+                <p className="text-xs font-semibold truncate" style={{ color: '#1A2C3D' }}>
+                  {item.name}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: '#9A9590' }}>
                   {displayW} × {displayH} px
-                  {cropped && <span className="ml-1 text-purple-500 font-medium">· recortado</span>}
-                  {item.pdfPage && <span className="ml-1">· pág {item.pdfPage}</span>}
+                  {cropped && <span style={{ color: '#7A8A99' }}> · recortado</span>}
+                  {item.pdfPage && <span> · pág {item.pdfPage}</span>}
                 </p>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                 {cropped && (
-                  <button
-                    onClick={() => onResetCrop(item.id)}
-                    title="Restablecer recorte"
-                    className="w-6 h-6 flex items-center justify-center text-purple-400 hover:text-purple-600 rounded hover:bg-purple-50"
-                  >
+                  <PanelButton onClick={() => onResetCrop(item.id)} title="Restablecer recorte">
                     <RotateCcw className="w-3 h-3" />
-                  </button>
+                  </PanelButton>
                 )}
-                <button
-                  onClick={() => onActivateCrop(item.id)}
-                  title="Recortar"
-                  className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-purple-600 rounded hover:bg-purple-50"
-                >
+                <PanelButton onClick={() => onActivateCrop(item.id)} title="Recortar">
                   <Crop className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={() => onReorderItem(item.id, 'up')}
-                  disabled={idx === 0}
-                  title="Subir capa"
-                  className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 disabled:opacity-30"
-                >
+                </PanelButton>
+                <PanelButton onClick={() => onReorderItem(item.id, 'up')} title="Subir capa" disabled={idx === 0}>
                   <ChevronUp className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onReorderItem(item.id, 'down')}
-                  disabled={idx === sorted.length - 1}
-                  title="Bajar capa"
-                  className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 disabled:opacity-30"
-                >
+                </PanelButton>
+                <PanelButton onClick={() => onReorderItem(item.id, 'down')} title="Bajar capa" disabled={idx === sorted.length - 1}>
                   <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onDeleteItem(item.id)}
-                  title="Eliminar imagen"
-                  className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 rounded hover:bg-red-50"
-                >
+                </PanelButton>
+                <PanelButton onClick={() => onDeleteItem(item.id)} title="Eliminar imagen" danger>
                   <Trash2 className="w-3 h-3" />
-                </button>
+                </PanelButton>
               </div>
             </li>
           );
         })}
       </ul>
     </div>
+  );
+}
+
+function PanelButton({
+  onClick,
+  title,
+  disabled,
+  danger,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  disabled?: boolean;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="w-6 h-6 flex items-center justify-center transition-colors disabled:opacity-30"
+      style={{ color: '#B5B0A3', borderRadius: '2px' }}
+      onMouseEnter={(e) => {
+        if (!disabled) (e.currentTarget as HTMLElement).style.color = danger ? '#C0392B' : '#1A2C3D';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.color = '#B5B0A3';
+      }}
+    >
+      {children}
+    </button>
   );
 }

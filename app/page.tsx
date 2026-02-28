@@ -42,20 +42,45 @@ export default function Home() {
   const liveRef = useRef({ canvasItems, measurements, calibration, currentProjectId, currentProjectName });
   liveRef.current = { canvasItems, measurements, calibration, currentProjectId, currentProjectName };
 
+  // ── Undo history ────────────────────────────────────────────────────────────
+  type HistoryEntry = { measurements: Measurement[]; canvasItems: CanvasItem[]; calibration: CalibrationData | null };
+  const historyRef = useRef<HistoryEntry[]>([]);
+  const MAX_HISTORY = 50;
+
+  const pushToHistory = useCallback(() => {
+    const { measurements: m, canvasItems: ci, calibration: cal } = liveRef.current;
+    historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), { measurements: m, canvasItems: ci, calibration: cal }];
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyRef.current.length === 0) return;
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    setMeasurements(prev.measurements);
+    setCanvasItems(prev.canvasItems);
+    setCalibration(prev.calibration);
+  }, []);
+
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-      const map: Record<string, Tool> = { s: 'select', c: 'calibrate', d: 'distance', a: 'area', r: 'crop' };
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      const map: Record<string, Tool> = { s: 'select', h: 'pan', c: 'calibrate', d: 'distance', a: 'area', r: 'crop' };
       if (map[e.key.toLowerCase()]) setActiveTool(map[e.key.toLowerCase() as keyof typeof map]);
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedMeasurementId) {
+        pushToHistory();
         setMeasurements((prev) => prev.filter((m) => m.id !== selectedMeasurementId));
         setSelectedMeasurementId(null);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [selectedMeasurementId]);
+  }, [selectedMeasurementId, undo, pushToHistory]);
 
   // ── Core save function (reads from liveRef — never stale) ───────────────────
   const executeSave = useCallback(async () => {
@@ -87,7 +112,6 @@ export default function Home() {
         calibration: cal,
       });
       setSaveStatus('saved');
-      setTimeout(() => setSaveStatus((s) => (s === 'saved' ? 'idle' : s)), 2500);
     } catch (err) {
       console.error('Save failed:', err);
       setSaveStatus('unsaved');
@@ -122,12 +146,13 @@ export default function Home() {
 
   // ── Load project ────────────────────────────────────────────────────────────
   const handleLoadProject = useCallback((project: Project) => {
+    historyRef.current = [];
     setCanvasItems(project.canvasItems);
     setMeasurements(project.measurements);
     setCalibration(project.calibration);
     setCurrentProjectId(project.id);
     setCurrentProjectName(project.name);
-    setSaveStatus('idle');
+    setSaveStatus('saved');
     setSelectedItemId(null);
     setSelectedMeasurementId(null);
     setActiveTool('select');
@@ -236,12 +261,14 @@ export default function Home() {
 
   // ── Canvas items management ─────────────────────────────────────────────────
   const handleDeleteItem = useCallback((id: string) => {
+    pushToHistory();
     setCanvasItems((prev) => prev.filter((i) => i.id !== id));
     pdfRefs.current.delete(id);
     if (selectedItemId === id) setSelectedItemId(null);
-  }, [selectedItemId]);
+  }, [selectedItemId, pushToHistory]);
 
   const handleReorderItem = useCallback((id: string, direction: 'up' | 'down') => {
+    pushToHistory();
     setCanvasItems((prev) => {
       const sorted = [...prev].sort((a, b) => b.zIndex - a.zIndex);
       const idx = sorted.findIndex((i) => i.id === id);
@@ -255,9 +282,10 @@ export default function Home() {
       }
       return prev;
     });
-  }, []);
+  }, [pushToHistory]);
 
   const handleResetCrop = useCallback((id: string) => {
+    pushToHistory();
     setCanvasItems((prev) =>
       prev.map((item) =>
         item.id === id
@@ -265,7 +293,7 @@ export default function Home() {
           : item
       )
     );
-  }, []);
+  }, [pushToHistory]);
 
   const handleActivateCrop = useCallback((id: string) => {
     setActiveTool('crop');
@@ -279,6 +307,7 @@ export default function Home() {
   }, []);
 
   const handleCalibrationConfirm = useCallback((cal: CalibrationData) => {
+    pushToHistory();
     setCalibration(cal);
     setPendingCalibration(null);
     setMeasurements((prev) =>
@@ -288,19 +317,25 @@ export default function Home() {
           : { ...m, realArea: pixelAreaToReal(m.pixelArea, cal), unit: cal.unit }
       )
     );
-  }, []);
+  }, [pushToHistory]);
 
   // ── Measurements ────────────────────────────────────────────────────────────
   const handleDeleteMeasurement = useCallback((id: string) => {
+    pushToHistory();
     setMeasurements((prev) => prev.filter((m) => m.id !== id));
     setSelectedMeasurementId((prev) => (prev === id ? null : prev));
-  }, []);
+  }, [pushToHistory]);
 
   const handleRenameMeasurement = useCallback((id: string, label: string) => {
     setMeasurements((prev) => prev.map((m) => (m.id === id ? { ...m, label } : m)));
   }, []);
 
+  const handleRecolorMeasurement = useCallback((id: string, color: string) => {
+    setMeasurements((prev) => prev.map((m) => (m.id === id ? { ...m, color } : m)));
+  }, []);
+
   const handleNewProject = useCallback(() => {
+    historyRef.current = [];
     setShowProjectsModal(false);
     setCanvasItems([]);
     setMeasurements([]);
@@ -370,15 +405,15 @@ export default function Home() {
             measurements={measurements}
             selectedMeasurementId={selectedMeasurementId}
             selectedItemId={selectedItemId}
-            onMeasurementsChange={setMeasurements}
+            onMeasurementsChange={(m) => { pushToHistory(); setMeasurements(m); }}
             onCalibrationDrawn={handleCalibrationDrawn}
             onSelectMeasurement={setSelectedMeasurementId}
             onSelectItem={setSelectedItemId}
-            onItemsChange={setCanvasItems}
+            onItemsChange={(items) => { pushToHistory(); setCanvasItems(items); }}
           />
         </div>
 
-        <aside className="w-64 bg-white border-l border-gray-100 flex flex-col overflow-hidden shrink-0">
+        <aside className="w-64 flex flex-col overflow-hidden shrink-0" style={{ backgroundColor: '#F1EFEA', borderLeft: '1px solid #C8C4BB' }}>
           <ImageLayersPanel
             items={canvasItems}
             selectedItemId={selectedItemId}
@@ -395,6 +430,7 @@ export default function Home() {
             onSelectMeasurement={setSelectedMeasurementId}
             onDeleteMeasurement={handleDeleteMeasurement}
             onRenameMeasurement={handleRenameMeasurement}
+            onRecolorMeasurement={handleRecolorMeasurement}
           />
         </aside>
       </div>

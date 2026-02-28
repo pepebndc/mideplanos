@@ -1,4 +1,4 @@
-export type Tool = 'select' | 'calibrate' | 'distance' | 'area' | 'delete' | 'crop';
+export type Tool = 'select' | 'pan' | 'calibrate' | 'distance' | 'area' | 'delete' | 'crop';
 
 export type Unit = 'm' | 'cm' | 'mm' | 'ft' | 'in';
 

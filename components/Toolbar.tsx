@@ -1,7 +1,7 @@
 'use client';
 
 import { Tool } from '@/types';
-import { MousePointer2, Ruler, Square, Crosshair, Trash2, Crop } from 'lucide-react';
+import { MousePointer2, Hand, Ruler, Square, Crosshair, Trash2, Crop } from 'lucide-react';
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -12,6 +12,7 @@ interface ToolbarProps {
 
 const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string; activeClass: string }[] = [
   { id: 'select', icon: <MousePointer2 className="w-5 h-5" />, label: 'Seleccionar / Mover', shortcut: 'S', activeClass: 'bg-gray-100 text-gray-700' },
+  { id: 'pan', icon: <Hand className="w-5 h-5" />, label: 'Mover vista', shortcut: 'H', activeClass: 'bg-sky-100 text-sky-600' },
   { id: 'calibrate', icon: <Crosshair className="w-5 h-5" />, label: 'Calibrar escala', shortcut: 'C', activeClass: 'bg-amber-100 text-amber-600' },
   { id: 'distance', icon: <Ruler className="w-5 h-5" />, label: 'Medir distancia', shortcut: 'D', activeClass: 'bg-blue-100 text-blue-600' },
   { id: 'area', icon: <Square className="w-5 h-5" />, label: 'Medir área', shortcut: 'A', activeClass: 'bg-green-100 text-green-600' },
@@ -23,10 +24,14 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRe
   return (
     <div className="flex flex-col items-center gap-1 py-3 px-2 bg-white border-r border-gray-100 shadow-sm select-none">
       {/* Logo mark */}
-      <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center mb-2 flex-shrink-0">
-        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      <div className="w-10 h-10 flex items-center justify-center mb-1 shrink-0">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden>
+          <line x1="2" y1="11" x2="30" y2="11" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="2" y1="6.5" x2="2" y2="15.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" />
+          <line x1="30" y1="6.5" x2="30" y2="15.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" />
+          <line x1="2" y1="22" x2="19" y2="22" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" strokeOpacity="0.35" />
+          <line x1="2" y1="17.5" x2="2" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
+          <line x1="19" y1="17.5" x2="19" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
         </svg>
       </div>
 
@@ -40,7 +45,7 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRe
             onClick={() => onToolChange(tool.id)}
             title={`${tool.label} (${tool.shortcut})`}
             className={`
-              relative group w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 flex-shrink-0
+              relative group w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0
               ${isActive ? tool.activeClass + ' shadow-sm' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}
             `}
           >
@@ -59,7 +64,7 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRe
           <button
             onClick={onRecalibrate}
             title="Recalibrar escala"
-            className="relative group w-11 h-11 rounded-xl flex items-center justify-center text-amber-400 hover:bg-amber-50 transition-colors flex-shrink-0"
+            className="relative group w-11 h-11 rounded-xl flex items-center justify-center text-amber-400 hover:bg-amber-50 transition-colors shrink-0"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}

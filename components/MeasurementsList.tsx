@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Measurement, CalibrationData } from '@/types';
 import { formatLength, formatArea } from '@/utils/measurements';
 import { Ruler, Square, Trash2, Edit2, Check, X, Download } from 'lucide-react';
+import { MEASUREMENT_COLORS } from '@/utils/measurements';
 
 interface MeasurementsListProps {
   measurements: Measurement[];
@@ -12,6 +13,7 @@ interface MeasurementsListProps {
   onSelectMeasurement: (id: string | null) => void;
   onDeleteMeasurement: (id: string) => void;
   onRenameMeasurement: (id: string, label: string) => void;
+  onRecolorMeasurement: (id: string, color: string) => void;
 }
 
 export default function MeasurementsList({
@@ -21,6 +23,7 @@ export default function MeasurementsList({
   onSelectMeasurement,
   onDeleteMeasurement,
   onRenameMeasurement,
+  onRecolorMeasurement,
 }: MeasurementsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -70,17 +73,29 @@ export default function MeasurementsList({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ backgroundColor: '#F1EFEA' }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <h2 className="font-bold text-gray-800 text-sm">Medidas</h2>
+      <div
+        className="px-4 py-2.5 flex items-center gap-3 shrink-0"
+        style={{ borderBottom: '1px solid #C8C4BB', backgroundColor: '#F1EFEA' }}
+      >
+        <span
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: '#9A9590' }}
+        >
+          Medidas
+        </span>
+        <div className="flex-1 h-px" style={{ backgroundColor: '#C8C4BB' }} />
         {measurements.length > 0 && (
           <button
             onClick={exportCSV}
             title="Exportar CSV"
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+            className="flex items-center gap-1 text-[10px] font-medium transition-colors"
+            style={{ color: '#9A9590' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#9A9590')}
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3 h-3" />
             CSV
           </button>
         )}
@@ -88,14 +103,28 @@ export default function MeasurementsList({
 
       {/* Stats summary */}
       {measurements.length > 0 && (
-        <div className="px-4 py-2 border-b border-gray-100 grid grid-cols-2 gap-2">
-          <div className="bg-blue-50 rounded-lg p-2 text-center">
-            <p className="text-xs text-blue-500 font-medium">Distancias</p>
-            <p className="text-lg font-bold text-blue-700">{totalDistances.length}</p>
+        <div
+          className="px-4 py-2 flex items-center gap-4 shrink-0"
+          style={{ borderBottom: '1px solid #E4E2DC' }}
+        >
+          <div className="flex items-center gap-1.5">
+            <Ruler className="w-3 h-3" style={{ color: '#9A9590' }} />
+            <span className="text-xs font-semibold" style={{ color: '#1A2C3D' }}>
+              {totalDistances.length}
+            </span>
+            <span className="text-[10px]" style={{ color: '#9A9590' }}>
+              dist.
+            </span>
           </div>
-          <div className="bg-green-50 rounded-lg p-2 text-center">
-            <p className="text-xs text-green-500 font-medium">Áreas</p>
-            <p className="text-lg font-bold text-green-700">{totalAreas.length}</p>
+          <div className="w-px h-3" style={{ backgroundColor: '#C8C4BB' }} />
+          <div className="flex items-center gap-1.5">
+            <Square className="w-3 h-3" style={{ color: '#9A9590' }} />
+            <span className="text-xs font-semibold" style={{ color: '#1A2C3D' }}>
+              {totalAreas.length}
+            </span>
+            <span className="text-[10px]" style={{ color: '#9A9590' }}>
+              áreas
+            </span>
           </div>
         </div>
       )}
@@ -104,16 +133,16 @@ export default function MeasurementsList({
       <div className="flex-1 overflow-y-auto">
         {measurements.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
-              <Ruler className="w-6 h-6 text-gray-400" />
-            </div>
-            <p className="text-sm text-gray-500 font-medium">Sin medidas aún</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <DimensionIcon size={28} color="#C8C4BB" />
+            <p className="text-xs font-medium mt-3" style={{ color: '#7A8A99' }}>
+              Sin medidas aún
+            </p>
+            <p className="text-[10px] mt-1 leading-relaxed" style={{ color: '#B5B0A3' }}>
               Usa las herramientas de la barra lateral para empezar a medir
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <ul>
             {measurements.map((m) => {
               const isSelected = m.id === selectedId;
               const isEditing = m.id === editingId;
@@ -122,20 +151,33 @@ export default function MeasurementsList({
                 <li
                   key={m.id}
                   onClick={() => onSelectMeasurement(isSelected ? null : m.id)}
-                  className={`px-4 py-3 cursor-pointer transition-colors ${
-                    isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : 'hover:bg-gray-50 border-l-2 border-transparent'
-                  }`}
+                  className="cursor-pointer transition-colors px-3 py-2.5"
+                  style={{
+                    borderLeft: isSelected ? '2px solid #1A2C3D' : '2px solid transparent',
+                    backgroundColor: isSelected ? 'rgba(26,44,61,0.06)' : 'transparent',
+                    borderBottom: '1px solid #E4E2DC',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(26,44,61,0.03)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                  }}
                 >
                   <div className="flex items-start gap-2">
-                    {/* Color + icon */}
+                    {/* Color dot + icon */}
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ backgroundColor: m.color + '20' }}
+                      className="w-7 h-7 flex items-center justify-center shrink-0 mt-0.5"
+                      style={{
+                        backgroundColor: m.color + '18',
+                        border: `1px solid ${m.color}30`,
+                        borderRadius: '2px',
+                      }}
                     >
                       {m.type === 'distance' ? (
-                        <Ruler className="w-4 h-4" style={{ color: m.color }} />
+                        <Ruler className="w-3.5 h-3.5" style={{ color: m.color }} />
                       ) : (
-                        <Square className="w-4 h-4" style={{ color: m.color }} />
+                        <Square className="w-3.5 h-3.5" style={{ color: m.color }} />
                       )}
                     </div>
 
@@ -144,29 +186,70 @@ export default function MeasurementsList({
                       {/* Label row */}
                       <div className="flex items-center gap-1">
                         {isEditing ? (
-                          <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              className="flex-1 text-xs border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') confirmEdit(m.id);
-                                if (e.key === 'Escape') setEditingId(null);
-                              }}
-                              autoFocus
-                            />
-                            <button onClick={() => confirmEdit(m.id)} className="text-green-600 hover:text-green-800">
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
+                          <div className="w-full" onClick={(e) => e.stopPropagation()}>
+                            {/* Name input row */}
+                            <div className="flex items-center gap-1">
+                              <input
+                                className="flex-1 text-xs px-1.5 py-0.5 focus:outline-none"
+                                style={{
+                                  border: '1px solid #1A2C3D',
+                                  borderRadius: '2px',
+                                  backgroundColor: '#fff',
+                                  color: '#1A2C3D',
+                                }}
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') confirmEdit(m.id);
+                                  if (e.key === 'Escape') setEditingId(null);
+                                }}
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => confirmEdit(m.id)}
+                                className="transition-colors"
+                                style={{ color: '#9A9590' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = '#9A9590')}
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => setEditingId(null)}
+                                className="transition-colors"
+                                style={{ color: '#B5B0A3' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = '#B5B0A3')}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                            {/* Color swatches */}
+                            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                              {MEASUREMENT_COLORS.map((c) => (
+                                <button
+                                  key={c}
+                                  title={c}
+                                  onClick={() => onRecolorMeasurement(m.id, c)}
+                                  className="w-4 h-4 transition-transform hover:scale-125"
+                                  style={{
+                                    backgroundColor: c,
+                                    borderRadius: '2px',
+                                    border: m.color === c ? '2px solid #1A2C3D' : '1.5px solid transparent',
+                                    outline: m.color === c ? '1px solid #fff' : 'none',
+                                    outlineOffset: '-3px',
+                                  }}
+                                />
+                              ))}
+                            </div>
                           </div>
                         ) : (
                           <>
-                            <span className="text-xs font-semibold text-gray-700 truncate">{m.label}</span>
-                            <span className="text-xs text-gray-400">
-                              {m.type === 'distance' ? '· Dist.' : '· Área'}
+                            <span className="text-xs font-semibold truncate" style={{ color: '#1A2C3D' }}>
+                              {m.label}
+                            </span>
+                            <span className="text-[10px]" style={{ color: '#B5B0A3' }}>
+                              {m.type === 'distance' ? '· dist.' : '· área'}
                             </span>
                           </>
                         )}
@@ -187,26 +270,34 @@ export default function MeasurementsList({
 
                       {/* No calibration notice */}
                       {!calibration && !isEditing && (
-                        <p className="text-xs text-amber-500 mt-0.5">Sin calibrar</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: '#B5B0A3' }}>
+                          Sin calibrar
+                        </p>
                       )}
                     </div>
 
                     {/* Actions */}
                     {!isEditing && (
-                      <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => startEdit(m)}
-                          className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
                           title="Renombrar"
+                          className="w-6 h-6 flex items-center justify-center transition-colors"
+                          style={{ color: '#B5B0A3', borderRadius: '2px' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = '#B5B0A3')}
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => onDeleteMeasurement(m.id)}
-                          className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
                           title="Eliminar"
+                          className="w-6 h-6 flex items-center justify-center transition-colors"
+                          style={{ color: '#B5B0A3', borderRadius: '2px' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = '#C0392B')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = '#B5B0A3')}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
                     )}
@@ -219,13 +310,29 @@ export default function MeasurementsList({
       </div>
 
       {/* Calibration status */}
-      <div className={`px-4 py-2.5 border-t text-xs font-medium ${
-        calibration ? 'bg-green-50 border-green-100 text-green-700' : 'bg-amber-50 border-amber-100 text-amber-700'
-      }`}>
-        {calibration
-          ? `✓ Calibrado: ${calibration.pixelsPerUnit.toFixed(1)} px/${calibration.unit}`
-          : '⚠ Sin calibración — medidas en píxeles'}
+      <div
+        className="px-4 py-2 shrink-0"
+        style={{ borderTop: '1px solid #C8C4BB', backgroundColor: '#F1EFEA' }}
+      >
+        <p className="text-[10px] font-medium" style={{ color: calibration ? '#1A2C3D' : '#9A9590' }}>
+          {calibration
+            ? `✓ Calibrado · ${calibration.pixelsPerUnit.toFixed(1)} px/${calibration.unit}`
+            : '— Sin calibración · medidas en píxeles'}
+        </p>
       </div>
     </div>
+  );
+}
+
+function DimensionIcon({ size = 24, color = '#1A2C3D' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden>
+      <line x1="2" y1="11" x2="30" y2="11" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      <line x1="2" y1="6.5" x2="2" y2="15.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="30" y1="6.5" x2="30" y2="15.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="2" y1="22" x2="19" y2="22" stroke={color} strokeWidth="3" strokeLinecap="round" strokeOpacity="0.4" />
+      <line x1="2" y1="17.5" x2="2" y2="26.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" />
+      <line x1="19" y1="17.5" x2="19" y2="26.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" />
+    </svg>
   );
 }
