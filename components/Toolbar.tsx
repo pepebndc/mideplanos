@@ -23,19 +23,7 @@ const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string;
 export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRecalibrate }: ToolbarProps) {
   return (
     <div className="flex flex-col items-center gap-1 py-3 px-2 bg-white border-r border-gray-100 shadow-sm select-none">
-      {/* Logo mark */}
-      <div className="w-10 h-10 flex items-center justify-center mb-1 shrink-0">
-        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden>
-          <line x1="2" y1="11" x2="30" y2="11" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" />
-          <line x1="2" y1="6.5" x2="2" y2="15.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" />
-          <line x1="30" y1="6.5" x2="30" y2="15.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" />
-          <line x1="2" y1="22" x2="19" y2="22" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" strokeOpacity="0.35" />
-          <line x1="2" y1="17.5" x2="2" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
-          <line x1="19" y1="17.5" x2="19" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
-        </svg>
-      </div>
 
-      <div className="w-full h-px bg-gray-100 my-1" />
 
       {TOOLS.map((tool) => {
         const isActive = activeTool === tool.id;
