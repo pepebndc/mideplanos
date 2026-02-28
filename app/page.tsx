@@ -317,14 +317,11 @@ export default function LandingPage() {
             <div className="max-w-5xl mx-auto px-6">
               <div className="text-center mb-14">
                 <h2
-                  className="text-3xl font-bold tracking-tight mb-3"
+                  className="text-3xl font-bold tracking-tight"
                   style={{ letterSpacing: '-0.03em' }}
                 >
                   Todo lo que necesitas para medir planos
                 </h2>
-                <p className="text-base" style={{ color: '#5A6A79' }}>
-                  Sin instalaciones, sin cuentas, sin complicaciones. Abre el navegador y empieza.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

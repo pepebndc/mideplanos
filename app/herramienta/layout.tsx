@@ -15,5 +15,9 @@ export const metadata: Metadata = {
 };
 
 export default function HerramientaLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <div style={{ height: '100dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {children}
+    </div>
+  );
 }
