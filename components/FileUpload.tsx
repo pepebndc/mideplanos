@@ -94,7 +94,7 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
               Medición de planos.
             </h1>
             <p className="text-sm" style={{ color: '#7A8A99' }}>
-              Carga una imagen o PDF y mide distancias, áreas y perímetros con calibración a escala real.
+              Carga una imagen o PDF y mide distancias, áreas y perímetros con calibración de escala de referencia.
             </p>
           </div>
 

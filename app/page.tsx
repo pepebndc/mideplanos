@@ -8,7 +8,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mideplanos.com';
 export const metadata: Metadata = {
   title: 'Medir Planos Online Gratis — Distancias y Áreas en Imágenes y PDFs | mideplanos',
   description:
-    'Herramienta gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala real. Sin registro, sin instalación. Todo en tu navegador.',
+    'Herramienta gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala de referencia. Sin registro, sin instalación. Todo en tu navegador.',
   keywords: [
     'medir planos online',
     'medir planos gratis',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Medir Planos Online Gratis | mideplanos',
     description:
-      'Mide distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala real. Sin registro, sin instalación.',
+      'Mide distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala de referencia. Sin registro, sin instalación.',
     type: 'website',
     url: SITE_URL,
     siteName: 'mideplanos',
@@ -58,7 +58,7 @@ const webAppSchema = {
   name: 'mideplanos',
   url: `${SITE_URL}/herramienta`,
   description:
-    'Herramienta web gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs con calibración de escala real.',
+    'Herramienta web gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs con calibración de escala de referencia.',
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Web',
   inLanguage: 'es',
@@ -70,7 +70,7 @@ const webAppSchema = {
   featureList: [
     'Medición de distancias con múltiples segmentos',
     'Cálculo de áreas y superficies',
-    'Calibración de escala real (m, cm, mm, ft, in)',
+    'Calibración de escala (m, cm, mm, ft, in)',
     'Soporte de archivos PDF multipágina',
     'Soporte de imágenes JPG, PNG y WEBP',
     'Exportación de medidas a CSV',
@@ -268,7 +268,7 @@ export default function LandingPage() {
             >
               Carga cualquier imagen o PDF y mide distancias, áreas y perímetros con{' '}
               <strong className="font-semibold" style={{ color: '#1A2C3D' }}>
-                calibración de escala real
+                calibración de escala de referencia
               </strong>
               . Perfecto para planos de arquitectura, construcción, reforma e ingeniería.
             </p>
@@ -294,7 +294,7 @@ export default function LandingPage() {
             >
               {[
                 { label: 'JPG, PNG, WEBP y PDF', icon: <FileIcon /> },
-                { label: 'Calibración de escala real', icon: <CrosshairIcon /> },
+                { label: 'Calibración de escala', icon: <CrosshairIcon /> },
                 { label: 'Exportar a CSV', icon: <DownloadIcon /> },
                 { label: 'Datos privados — procesado local', icon: <LockIcon /> },
               ].map((b) => (
@@ -520,7 +520,7 @@ const FEATURES = [
     color: '#1A2C3D',
   },
   {
-    title: 'Calibración de escala real',
+    title: 'Calibración de escala',
     desc: 'Traza una referencia conocida en el plano y asigna su medida real. Todas las mediciones se convierten automáticamente a la escala del plano.',
     icon: <CrosshairIcon />,
     bg: '#E0DDD7',

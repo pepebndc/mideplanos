@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: '%s | mideplanos',
   },
   description:
-    'Herramienta gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala real. Sin registro, sin instalación.',
+    'Herramienta gratuita para medir distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala de referencia. Sin registro, sin instalación.',
   keywords: [
     'medir planos online',
     'medir planos gratis',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'mideplanos — Medir Planos Online Gratis',
     description:
-      'Mide distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala real. Sin registro, sin instalación.',
+      'Mide distancias y áreas en planos de construcción, imágenes y PDFs. Calibración de escala de referencia. Sin registro, sin instalación.',
     type: 'website',
     url: SITE_URL,
     siteName: 'mideplanos',
