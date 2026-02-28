@@ -1,6 +1,6 @@
 export default function Attribution({ className = '' }: { className?: string }) {
   return (
-    <p className={`text-[10px] text-center ${className}`} style={{ color: '#C8C4BB' }}>
+    <p className={`text-[10px] text-center ${className}`} style={{ color: '#7A7670' }}>
       Hecho con ♥ y 🤖 por{' '}
       <a
         href="https://pepeblasco.com"

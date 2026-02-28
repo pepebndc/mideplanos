@@ -259,7 +259,7 @@ export default function LandingPage() {
               style={{ letterSpacing: '-0.04em' }}
             >
               Mide planos online,{' '}
-              <span style={{ color: '#2D6AE0' }}>gratis</span>
+              <span style={{ color: '#5A6A79' }}>gratis</span>
             </h1>
 
             <p
@@ -386,7 +386,7 @@ export default function LandingPage() {
               <Link
                 href="/herramienta"
                 className="inline-flex items-center gap-2 font-semibold px-6 py-3 rounded-xl text-sm transition-all duration-150 hover:opacity-90"
-                style={{ backgroundColor: '#2D6AE0', color: '#fff' }}
+                style={{ backgroundColor: '#1A2C3D', color: '#F1EFEA' }}
               >
                 Probar la herramienta
                 <ArrowRight size={14} />
@@ -509,43 +509,43 @@ const FEATURES = [
     title: 'Medir distancias en planos',
     desc: 'Traza líneas con múltiples segmentos para medir distancias reales sobre cualquier imagen o plano. Perfecto para planos de construcción y arquitectura.',
     icon: <RulerIcon />,
-    bg: '#EBF1FB',
-    color: '#2D6AE0',
+    bg: '#E0DDD7',
+    color: '#1A2C3D',
   },
   {
     title: 'Calcular áreas y superficies',
     desc: 'Dibuja polígonos de cualquier forma para calcular áreas y superficies en metros cuadrados, centímetros cuadrados o cualquier otra unidad.',
     icon: <SquareIcon />,
-    bg: '#EAFAF1',
-    color: '#16A34A',
+    bg: '#E0DDD7',
+    color: '#1A2C3D',
   },
   {
     title: 'Calibración de escala real',
     desc: 'Traza una referencia conocida en el plano y asigna su medida real. Todas las mediciones se convierten automáticamente a la escala del plano.',
     icon: <CrosshairIcon />,
-    bg: '#FEF9EC',
-    color: '#CA8A04',
+    bg: '#E0DDD7',
+    color: '#1A2C3D',
   },
   {
     title: 'Soporte de PDFs multipágina',
     desc: 'Carga planos en formato PDF, incluso de varias páginas, y mide en cualquier página. Compatible con los estándares de entrega de proyectos de arquitectura.',
     icon: <FileIcon />,
-    bg: '#FEF2F2',
-    color: '#DC2626',
+    bg: '#E0DDD7',
+    color: '#1A2C3D',
   },
   {
     title: 'Múltiples capas de imagen',
     desc: 'Superpón varias imágenes o planos en el mismo lienzo, ajusta su posición y realiza mediciones cruzadas entre diferentes archivos.',
     icon: <LayersIcon />,
-    bg: '#F5F3FF',
-    color: '#7C3AED',
+    bg: '#E0DDD7',
+    color: '#1A2C3D',
   },
   {
     title: 'Privacidad total — sin servidor',
     desc: 'Ningún archivo se sube a ningún servidor. Todo el procesamiento ocurre localmente en tu navegador, garantizando la confidencialidad de tus planos.',
     icon: <LockIcon />,
-    bg: '#F0FDF4',
-    color: '#15803D',
+    bg: '#E0DDD7',
+    color: '#1A2C3D',
   },
 ];
 
@@ -704,7 +704,7 @@ function DownloadIcon() {
 
 function LockIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
       <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
