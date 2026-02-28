@@ -21,10 +21,6 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000)
 
-## Deploy en Vercel
-
-Conecta el repositorio a [Vercel](https://vercel.com) y despliega automáticamente. No se requiere configuración adicional.
-
 ## Tecnologías
 
 - [Next.js 16](https://nextjs.org/) + TypeScript

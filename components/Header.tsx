@@ -171,6 +171,7 @@ export default function Header({
           <FolderOpen className="w-4 h-4" />
           Nuevo
         </button>
+
       </div>
     </header>
   );

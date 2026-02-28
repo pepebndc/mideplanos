@@ -13,6 +13,7 @@ import MeasurementsList from '@/components/MeasurementsList';
 import ImageLayersPanel from '@/components/ImageLayersPanel';
 import CalibrationDialog from '@/components/CalibrationDialog';
 import ProjectsModal from '@/components/ProjectsModal';
+import Attribution from '@/components/Attribution';
 
 type PdfRef = { file: File; page: number; totalPages: number };
 
@@ -432,6 +433,9 @@ export default function Home() {
             onRenameMeasurement={handleRenameMeasurement}
             onRecolorMeasurement={handleRecolorMeasurement}
           />
+          <div className="shrink-0" style={{ borderTop: '1px solid #C8C4BB' }}>
+            <Attribution className="px-4 py-3" />
+          </div>
         </aside>
       </div>
 

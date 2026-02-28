@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Project } from '@/types';
 import { listProjects, formatProjectDate } from '@/utils/storage';
 import GridCanvas from '@/components/GridCanvas';
+import Attribution from '@/components/Attribution';
 
 interface FileUploadProps {
   onFileLoaded: (file: File) => void;
@@ -247,6 +248,7 @@ export default function FileUpload({ onFileLoaded, onLoadProject, onOpenProjects
           <p className="text-[11px] text-center mt-14" style={{ color: '#B5B0A3' }}>
             Todo se procesa localmente en tu navegador — ningún archivo se envía a servidores.
           </p>
+          <Attribution className="mt-2" />
         </div>
       </div>
     </div>

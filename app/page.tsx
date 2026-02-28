@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import GridCanvas from '@/components/GridCanvas';
+import Attribution from '@/components/Attribution';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mideplanos.com';
 
@@ -284,7 +285,7 @@ export default function LandingPage() {
               <span className="text-sm" style={{ color: '#9A9590' }}>
                 Sin tarjeta. Sin cuenta. Ahora mismo.
               </span>
-            </div>
+        </div>
 
             {/* Trust badges */}
             <div
@@ -322,7 +323,7 @@ export default function LandingPage() {
                 >
                   Todo lo que necesitas para medir planos
                 </h2>
-              </div>
+      </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {FEATURES.map((f) => (
@@ -432,8 +433,8 @@ export default function LandingPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
+          </div>
+        </div>
           </section>
 
           {/* ── FAQ ───────────────────────────────────────────────────────────── */}
@@ -493,8 +494,10 @@ export default function LandingPage() {
           </section>
         </main>
 
+        <Attribution className="pb-8 pt-4" />
+
         </div>{/* end relative content wrapper */}
-      </div>
+    </div>
     </>
   );
 }
