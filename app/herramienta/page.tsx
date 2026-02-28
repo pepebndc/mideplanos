@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Tool, Measurement, CalibrationData, CanvasItem, Project, SaveStatus } from '@/types';
 import { renderPdfPageToDataUrl } from '@/utils/pdfUtils';
 import { pixelsToReal, pixelAreaToReal, generateId } from '@/utils/measurements';
@@ -13,11 +14,14 @@ import MeasurementsList from '@/components/MeasurementsList';
 import ImageLayersPanel from '@/components/ImageLayersPanel';
 import CalibrationDialog from '@/components/CalibrationDialog';
 import ProjectsModal from '@/components/ProjectsModal';
+import LeaveEditorModal from '@/components/LeaveEditorModal';
 import Attribution from '@/components/Attribution';
 
 type PdfRef = { file: File; page: number; totalPages: number };
 
 export default function Home() {
+  const router = useRouter();
+
   // ── Canvas state ────────────────────────────────────────────────────────────
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -33,6 +37,7 @@ export default function Home() {
   const [currentProjectName, setCurrentProjectName] = useState('Sin título');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [pendingProjectName, setPendingProjectName] = useState('');
 
@@ -386,6 +391,13 @@ export default function Home() {
         onSave={handleSave}
         onOpenProjects={() => setShowProjectsModal(true)}
         onPageChange={handlePageChange}
+        onLogoClick={() => {
+          if (canvasItems.length > 0) {
+            setShowLeaveModal(true);
+          } else {
+            router.push('/');
+          }
+        }}
       />
 
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -488,6 +500,15 @@ export default function Home() {
           onLoadProject={(p) => { handleLoadProject(p); setShowProjectsModal(false); }}
           onNewProject={handleNewProject}
           onClose={() => setShowProjectsModal(false)}
+        />
+      )}
+
+      {/* Leave editor confirmation modal */}
+      {showLeaveModal && (
+        <LeaveEditorModal
+          saveStatus={saveStatus}
+          onConfirm={() => router.push('/')}
+          onCancel={() => setShowLeaveModal(false)}
         />
       )}
     </div>

@@ -15,6 +15,7 @@ interface HeaderProps {
   onSave: () => void;
   onOpenProjects: () => void;
   onPageChange?: (itemId: string, page: number) => void;
+  onLogoClick?: () => void;
 }
 
 export default function Header({
@@ -28,6 +29,7 @@ export default function Header({
   onSave,
   onOpenProjects,
   onPageChange,
+  onLogoClick,
 }: HeaderProps) {
   const addInputRef = useRef<HTMLInputElement>(null);
   // Track previous status to trigger the pop animation on transition
@@ -56,7 +58,11 @@ export default function Header({
     <header className="h-12 bg-white border-b border-gray-100 flex items-center px-4 gap-3 shadow-sm z-10 shrink-0">
 
       {/* Brand */}
-      <div className="flex items-center gap-2 mr-1 shrink-0">
+      <button
+        onClick={onLogoClick}
+        className="flex items-center gap-2 mr-1 shrink-0 rounded-lg px-1 -ml-1 transition-colors hover:bg-gray-100"
+        aria-label="Ir a la página de inicio"
+      >
         {/* Dimension-line mark */}
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" aria-hidden>
           <line x1="2" y1="11" x2="30" y2="11" stroke="#1A2C3D" strokeWidth="3.5" strokeLinecap="round" />
@@ -67,7 +73,7 @@ export default function Header({
           <line x1="19" y1="17.5" x2="19" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
         </svg>
         <span className="font-bold text-gray-900 text-sm tracking-tight" style={{ letterSpacing: '-0.02em' }}>mideplanos</span>
-      </div>
+      </button>
 
       <div className="h-5 w-px bg-gray-200 shrink-0" />
 
