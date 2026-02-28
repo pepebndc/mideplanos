@@ -38,6 +38,9 @@ export default function Home() {
   const canvasRef = useRef<MeasurementCanvasRef>(null);
   const pdfRefs = useRef<Map<string, PdfRef>>(new Map());
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Always-fresh ref so setTimeout callbacks never see stale closure values
+  const liveRef = useRef({ canvasItems, measurements, calibration, currentProjectId, currentProjectName });
+  liveRef.current = { canvasItems, measurements, calibration, currentProjectId, currentProjectName };
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -54,56 +57,57 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handler);
   }, [selectedMeasurementId]);
 
-  // ── Auto-save ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!currentProjectId || canvasItems.length === 0) return;
-    setSaveStatus('unsaved');
-    clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => performSave(currentProjectId, currentProjectName), 2500);
-    return () => clearTimeout(autoSaveTimer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasItems, measurements, calibration]);
+  // ── Core save function (reads from liveRef — never stale) ───────────────────
+  const executeSave = useCallback(async () => {
+    const { canvasItems: items, measurements: meas, calibration: cal, currentProjectId: pid, currentProjectName: pname } = liveRef.current;
+    if (items.length === 0) return;
 
-  // ── Save helpers ────────────────────────────────────────────────────────────
-  const performSave = useCallback(
-    async (projectId: string, name: string) => {
-      setSaveStatus('saving');
+    // Auto-assign an ID/name if the project has never been saved
+    let id = pid;
+    let name = pname;
+    if (!id) {
+      id = generateId();
+      name = items[0]?.name.replace(/\.[^.]+$/, '') || 'Mi plano';
+      setCurrentProjectId(id);
+      setCurrentProjectName(name);
+    }
+
+    setSaveStatus('saving');
+    try {
       const thumbnail = canvasRef.current?.getThumbnail() ?? '';
-      const project: Project = {
-        id: projectId,
+      const existing = (await listProjects()).find((p) => p.id === id);
+      await saveProject({
+        id,
         name,
-        createdAt: Date.now(),
+        createdAt: existing?.createdAt ?? Date.now(),
         updatedAt: Date.now(),
         thumbnail,
-        canvasItems,
-        measurements,
-        calibration,
-      };
-      // Preserve createdAt if project already exists
-      try {
-        const existing = (await listProjects()).find((p) => p.id === projectId);
-        if (existing) project.createdAt = existing.createdAt;
-      } catch { /* ignore */ }
-      await saveProject(project);
+        canvasItems: items,
+        measurements: meas,
+        calibration: cal,
+      });
       setSaveStatus('saved');
-      // Reset to 'saved' → after 3s back to idle
-      setTimeout(() => setSaveStatus((s) => (s === 'saved' ? 'idle' : s)), 3000);
-    },
-    [canvasItems, measurements, calibration]
-  );
-
-  const handleSave = useCallback(async () => {
-    if (currentProjectId) {
-      clearTimeout(autoSaveTimer.current);
-      await performSave(currentProjectId, currentProjectName);
-    } else {
-      // First save: ask for a name
-      setPendingProjectName(
-        canvasItems[0]?.name.replace(/\.[^.]+$/, '') ?? 'Mi plano'
-      );
-      setShowNameDialog(true);
+      setTimeout(() => setSaveStatus((s) => (s === 'saved' ? 'idle' : s)), 2500);
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveStatus('unsaved');
     }
-  }, [currentProjectId, currentProjectName, performSave, canvasItems]);
+  }, []);
+
+  // ── Auto-save — fires 2 s after any change, always, from the first file ─────
+  useEffect(() => {
+    if (canvasItems.length === 0) return;
+    setSaveStatus('unsaved');
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(executeSave, 2000);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [canvasItems, measurements, calibration, executeSave]);
+
+  // ── Manual save (force-immediate) ──────────────────────────────────────────
+  const handleSave = useCallback(async () => {
+    clearTimeout(autoSaveTimer.current);
+    await executeSave();
+  }, [executeSave]);
 
   const confirmSaveName = useCallback(async () => {
     const name = pendingProjectName.trim() || 'Mi plano';
@@ -111,8 +115,10 @@ export default function Home() {
     setCurrentProjectId(id);
     setCurrentProjectName(name);
     setShowNameDialog(false);
-    await performSave(id, name);
-  }, [pendingProjectName, currentProjectId, performSave]);
+    // Update liveRef immediately before saving
+    liveRef.current = { ...liveRef.current, currentProjectId: id, currentProjectName: name };
+    await executeSave();
+  }, [pendingProjectName, currentProjectId, executeSave]);
 
   // ── Load project ────────────────────────────────────────────────────────────
   const handleLoadProject = useCallback((project: Project) => {
@@ -158,10 +164,13 @@ export default function Home() {
           if (addToExisting) {
             setCanvasItems((prev) => [...prev, item]);
           } else {
+            const newId = generateId();
+            const newName = file.name.replace(/\.[^.]+$/, '');
             setCanvasItems([item]);
             setMeasurements([]);
             setCalibration(null);
-            setCurrentProjectId(null);
+            setCurrentProjectId(newId);
+            setCurrentProjectName(newName);
             setSaveStatus('idle');
           }
         } else {
@@ -174,10 +183,13 @@ export default function Home() {
               if (addToExisting) {
                 setCanvasItems((prev) => [...prev, item]);
               } else {
+                const newId = generateId();
+                const newName = file.name.replace(/\.[^.]+$/, '');
                 setCanvasItems([item]);
                 setMeasurements([]);
                 setCalibration(null);
-                setCurrentProjectId(null);
+                setCurrentProjectId(newId);
+                setCurrentProjectName(newName);
                 setSaveStatus('idle');
               }
               resolve();

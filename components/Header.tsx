@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { CalibrationData, CanvasItem, SaveStatus } from '@/types';
-import { FolderOpen, Plus, ChevronLeft, ChevronRight, Save, FolderOpen as Projects, Check, Loader2 } from 'lucide-react';
+import { FolderOpen, Plus, ChevronLeft, ChevronRight, CloudUpload, CloudCheck, Loader2, Folder } from 'lucide-react';
 
 interface HeaderProps {
   canvasItems: CanvasItem[];
@@ -17,13 +17,6 @@ interface HeaderProps {
   onPageChange?: (itemId: string, page: number) => void;
 }
 
-const SAVE_LABEL: Record<SaveStatus, string> = {
-  idle: 'Guardar',
-  unsaved: 'Guardar',
-  saving: 'Guardando…',
-  saved: 'Guardado',
-};
-
 export default function Header({
   canvasItems,
   selectedItem,
@@ -37,17 +30,34 @@ export default function Header({
   onPageChange,
 }: HeaderProps) {
   const addInputRef = useRef<HTMLInputElement>(null);
+  // Track previous status to trigger the pop animation on transition
+  const [animate, setAnimate] = useState(false);
+  const prevStatus = useRef<SaveStatus>(saveStatus);
+
+  useEffect(() => {
+    if (prevStatus.current !== saveStatus) {
+      setAnimate(true);
+      const t = setTimeout(() => setAnimate(false), 300);
+      prevStatus.current = saveStatus;
+      return () => clearTimeout(t);
+    }
+  }, [saveStatus]);
 
   const handleAddChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) { onAddFile(file); e.target.value = ''; }
   };
 
+  const isSaved = saveStatus === 'saved';
+  const isSaving = saveStatus === 'saving';
+  const isUnsaved = saveStatus === 'unsaved';
+
   return (
     <header className="h-12 bg-white border-b border-gray-100 flex items-center px-4 gap-3 shadow-sm z-10 shrink-0">
+
       {/* Brand */}
-      <div className="flex items-center gap-2 mr-1">
-        <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center shrink-0">
+      <div className="flex items-center gap-2 mr-1 shrink-0">
+        <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center">
           <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -58,29 +68,35 @@ export default function Header({
 
       <div className="h-5 w-px bg-gray-200 shrink-0" />
 
-      {/* Project name + save status */}
+      {/* Project name + inline save-status */}
       {canvasItems.length > 0 && (
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium text-gray-700 truncate max-w-[180px]">{projectName}</span>
-          {saveStatus === 'saved' && (
-            <span className="flex items-center gap-1 text-[11px] text-green-600 font-medium shrink-0">
-              <Check className="w-3 h-3" /> guardado
-            </span>
-          )}
-          {saveStatus === 'saving' && (
-            <span className="flex items-center gap-1 text-[11px] text-gray-400 font-medium shrink-0">
-              <Loader2 className="w-3 h-3 animate-spin" /> guardando…
-            </span>
-          )}
-          {saveStatus === 'unsaved' && (
-            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="Cambios sin guardar" />
-          )}
+          <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+            {projectName}
+          </span>
+
+          {/* Save-status pill */}
+          <span
+            className={`
+              inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0
+              transition-all duration-200
+              ${animate ? 'scale-110' : 'scale-100'}
+              ${isSaved ? 'text-green-600 bg-green-50' : isSaving ? 'text-blue-500 bg-blue-50' : isUnsaved ? 'text-amber-600 bg-amber-50' : 'text-gray-400 bg-gray-50'}
+            `}
+          >
+            {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+            {isSaved && <CloudCheck className="w-3 h-3" />}
+            {isUnsaved && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />}
+            {isSaving && 'Guardando…'}
+            {isSaved && 'Guardado'}
+            {isUnsaved && 'Sin guardar'}
+          </span>
         </div>
       )}
 
-      {/* PDF page navigation for selected item */}
+      {/* PDF page navigation */}
       {selectedItem?.pdfTotalPages && selectedItem.pdfTotalPages > 1 && onPageChange && (
-        <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-1 border border-gray-200">
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-1 border border-gray-200 shrink-0">
           <button
             disabled={(selectedItem.pdfPage ?? 1) <= 1}
             onClick={() => onPageChange(selectedItem.id, (selectedItem.pdfPage ?? 1) - 1)}
@@ -88,8 +104,8 @@ export default function Header({
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-xs text-gray-500 min-w-[60px] text-center">
-            Pág {selectedItem.pdfPage ?? 1} / {selectedItem.pdfTotalPages}
+          <span className="text-xs text-gray-500 min-w-[56px] text-center">
+            {selectedItem.pdfPage ?? 1} / {selectedItem.pdfTotalPages}
           </span>
           <button
             disabled={(selectedItem.pdfPage ?? 1) >= selectedItem.pdfTotalPages}
@@ -108,30 +124,38 @@ export default function Header({
         </span>
       )}
 
-      {/* Actions — right side */}
-      <div className="ml-auto flex items-center gap-2 shrink-0">
+      {/* Right actions */}
+      <div className="ml-auto flex items-center gap-1.5 shrink-0">
+
         {canvasItems.length > 0 && (
           <>
-            {/* Save */}
+            {/* Save button — icon morphs with status */}
             <button
               onClick={onSave}
-              disabled={saveStatus === 'saving' || saveStatus === 'saved'}
-              className={`flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5 transition-colors border ${
-                saveStatus === 'saved'
+              disabled={isSaving || isSaved}
+              title={isSaved ? 'Guardado' : isSaving ? 'Guardando…' : 'Guardar proyecto (Ctrl+S)'}
+              className={`
+                relative flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5
+                border transition-all duration-200
+                ${isSaved
                   ? 'text-green-600 bg-green-50 border-green-100 cursor-default'
-                  : saveStatus === 'saving'
-                  ? 'text-gray-400 bg-gray-50 border-gray-100 cursor-default'
-                  : 'text-white bg-blue-600 hover:bg-blue-700 border-blue-600'
-              }`}
+                  : isSaving
+                  ? 'text-blue-400 bg-blue-50 border-blue-100 cursor-default'
+                  : 'text-white bg-blue-600 hover:bg-blue-700 border-blue-600 active:scale-95'
+                }
+              `}
             >
-              {saveStatus === 'saving' ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : saveStatus === 'saved' ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              {SAVE_LABEL[saveStatus]}
+              <span className={`transition-transform duration-200 ${animate ? 'scale-125' : 'scale-100'}`}>
+                {isSaving
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : isSaved
+                  ? <CloudCheck className="w-4 h-4" />
+                  : <CloudUpload className="w-4 h-4" />
+                }
+              </span>
+              <span>
+                {isSaving ? 'Guardando…' : isSaved ? 'Guardado' : 'Guardar'}
+              </span>
             </button>
 
             {/* Add image */}
@@ -152,22 +176,22 @@ export default function Header({
           </>
         )}
 
-        {/* Projects */}
+        {/* Projects history */}
         <button
           onClick={onOpenProjects}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-colors border border-gray-200"
         >
-          <Projects className="w-4 h-4" />
+          <Folder className="w-4 h-4" />
           Proyectos
         </button>
 
-        {/* New canvas */}
+        {/* New / open */}
         <button
           onClick={onNewFile}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-colors border border-gray-200"
         >
           <FolderOpen className="w-4 h-4" />
-          {canvasItems.length > 0 ? 'Nuevo' : 'Abrir'}
+          Nuevo
         </button>
       </div>
     </header>
