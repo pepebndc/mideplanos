@@ -569,35 +569,39 @@ export default function Home() {
         className="md:hidden flex items-center border-t border-gray-100 shrink-0"
         style={{ backgroundColor: 'white' }}
       >
-        <Toolbar
-          activeTool={activeTool}
-          onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}
-          hasCalibration={!!calibration}
-          onRecalibrate={() => { setActiveTool('calibrate'); setShowMobilePanel(false); }}
-          variant="horizontal"
-        />
-        <div className="flex-1" />
-        {/* Panel toggle button */}
-        <button
-          onClick={() => setShowMobilePanel((v) => !v)}
-          className="relative flex items-center justify-center w-10 h-10 rounded-xl mx-2 transition-colors shrink-0"
-          style={{
-            color: showMobilePanel ? '#1A2C3D' : '#9A9590',
-            backgroundColor: showMobilePanel ? 'rgba(26,44,61,0.08)' : 'transparent',
-          }}
-          title="Capas y medidas"
-          aria-label="Capas y medidas"
-        >
-          <Layers className="w-5 h-5" />
-          {measurements.length > 0 && (
-            <span
-              className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full text-[9px] font-bold flex items-center justify-center text-white px-0.5"
-              style={{ backgroundColor: '#1A2C3D' }}
-            >
-              {measurements.length}
-            </span>
-          )}
-        </button>
+        {/* Scrollable tool strip — flex-1 so the Layers button is always visible */}
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <Toolbar
+            activeTool={activeTool}
+            onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}
+            hasCalibration={!!calibration}
+            onRecalibrate={() => { setActiveTool('calibrate'); setShowMobilePanel(false); }}
+            variant="horizontal"
+          />
+        </div>
+        {/* Panel toggle button — always visible at far right */}
+        <div className="shrink-0 border-l border-gray-100">
+          <button
+            onClick={() => setShowMobilePanel((v) => !v)}
+            className="relative flex items-center justify-center w-10 h-10 rounded-xl mx-1 transition-colors"
+            style={{
+              color: showMobilePanel ? '#1A2C3D' : '#9A9590',
+              backgroundColor: showMobilePanel ? 'rgba(26,44,61,0.08)' : 'transparent',
+            }}
+            title="Capas y medidas"
+            aria-label="Capas y medidas"
+          >
+            <Layers className="w-5 h-5" />
+            {measurements.length > 0 && (
+              <span
+                className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full text-[9px] font-bold flex items-center justify-center text-white px-0.5"
+                style={{ backgroundColor: '#1A2C3D' }}
+              >
+                {measurements.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Calibration dialog */}
