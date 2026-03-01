@@ -73,7 +73,7 @@ export default function MeasurementsList({
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: '#F1EFEA' }}>
+    <div className="flex flex-col" style={{ backgroundColor: '#F1EFEA' }}>
       {/* Header */}
       <div
         className="px-4 py-2.5 flex items-center gap-3 shrink-0"
@@ -130,7 +130,7 @@ export default function MeasurementsList({
       )}
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {measurements.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
             <DimensionIcon size={28} color="#C8C4BB" />
@@ -309,17 +309,6 @@ export default function MeasurementsList({
         )}
       </div>
 
-      {/* Calibration status */}
-      <div
-        className="px-4 py-2 shrink-0"
-        style={{ borderTop: '1px solid #C8C4BB', backgroundColor: '#F1EFEA' }}
-      >
-        <p className="text-[10px] font-medium" style={{ color: calibration ? '#1A2C3D' : '#9A9590' }}>
-          {calibration
-            ? `✓ Calibrado · ${calibration.pixelsPerUnit.toFixed(1)} px/${calibration.unit}`
-            : '— Sin calibración · medidas en píxeles'}
-        </p>
-      </div>
     </div>
   );
 }

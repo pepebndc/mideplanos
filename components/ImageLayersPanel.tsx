@@ -68,7 +68,7 @@ export default function ImageLayersPanel({
       </div>
 
       {/* Item list */}
-      <ul className="max-h-52 overflow-y-auto" style={{ backgroundColor: '#F1EFEA' }}>
+      <ul style={{ backgroundColor: '#F1EFEA' }}>
         {sorted.map((item, idx) => {
           const isSelected = item.id === selectedItemId;
           const isEditing = item.id === editingId;

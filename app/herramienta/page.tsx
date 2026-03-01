@@ -465,27 +465,36 @@ export default function Home() {
 
         {/* Right aside — desktop only */}
         <aside className="hidden md:flex w-64 flex-col overflow-hidden shrink-0" style={{ backgroundColor: '#F1EFEA', borderLeft: '1px solid #C8C4BB' }}>
-          <ImageLayersPanel
-            items={canvasItems}
-            selectedItemId={selectedItemId}
-            onSelectItem={setSelectedItemId}
-            onDeleteItem={handleDeleteItem}
-            onReorderItem={handleReorderItem}
-            onResetCrop={handleResetCrop}
-            onActivateCrop={handleActivateCrop}
-            onRenameItem={handleRenameItem}
-          />
-          <MeasurementsList
-            measurements={measurements}
-            calibration={calibration}
-            selectedId={selectedMeasurementId}
-            onSelectMeasurement={setSelectedMeasurementId}
-            onDeleteMeasurement={handleDeleteMeasurement}
-            onRenameMeasurement={handleRenameMeasurement}
-            onRecolorMeasurement={handleRecolorMeasurement}
-          />
-          <div className="shrink-0" style={{ borderTop: '1px solid #C8C4BB' }}>
-            <Attribution className="px-4 py-3" />
+          {/* Single scrollable area: images + measurements */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <ImageLayersPanel
+              items={canvasItems}
+              selectedItemId={selectedItemId}
+              onSelectItem={setSelectedItemId}
+              onDeleteItem={handleDeleteItem}
+              onReorderItem={handleReorderItem}
+              onResetCrop={handleResetCrop}
+              onActivateCrop={handleActivateCrop}
+              onRenameItem={handleRenameItem}
+            />
+            <MeasurementsList
+              measurements={measurements}
+              calibration={calibration}
+              selectedId={selectedMeasurementId}
+              onSelectMeasurement={setSelectedMeasurementId}
+              onDeleteMeasurement={handleDeleteMeasurement}
+              onRenameMeasurement={handleRenameMeasurement}
+              onRecolorMeasurement={handleRecolorMeasurement}
+            />
+          </div>
+          {/* Pinned footer: calibration status + credits */}
+          <div className="shrink-0 px-4 py-3 flex flex-col gap-1.5" style={{ borderTop: '1px solid #C8C4BB', backgroundColor: '#F1EFEA' }}>
+            <p className="text-[10px] font-medium" style={{ color: calibration ? '#1A2C3D' : '#9A9590' }}>
+              {calibration
+                ? `✓ Calibrado · ${calibration.pixelsPerUnit.toFixed(1)} px/${calibration.unit}`
+                : '— Sin calibración · medidas en píxeles'}
+            </p>
+            <Attribution />
           </div>
         </aside>
 
