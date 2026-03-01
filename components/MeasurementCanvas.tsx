@@ -362,6 +362,27 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // In-progress drawing
     if (drawState.isDrawing) {
+      // Crosshair guides from the last placed point
+      let guidePt: Point | null = null;
+      if ((activeTool === 'distance' || activeTool === 'area') && drawState.points.length > 0)
+        guidePt = drawState.points[drawState.points.length - 1];
+      else if (activeTool === 'calibrate' && drawState.calibrationPoints.length > 0)
+        guidePt = drawState.calibrationPoints[drawState.calibrationPoints.length - 1];
+
+      if (guidePt) {
+        const vLeft  = (0              - transform.offsetX) / scale;
+        const vRight = (canvas.width   - transform.offsetX) / scale;
+        const vTop   = (0              - transform.offsetY) / scale;
+        const vBot   = (canvas.height  - transform.offsetY) / scale;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        ctx.lineWidth = 0.75 / scale;
+        ctx.setLineDash([4 / scale, 4 / scale]);
+        ctx.beginPath(); ctx.moveTo(vLeft, guidePt.y); ctx.lineTo(vRight, guidePt.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(guidePt.x, vTop);  ctx.lineTo(guidePt.x, vBot);  ctx.stroke();
+        ctx.restore();
+      }
+
       if (activeTool === 'calibrate' && drawState.calibrationPoints.length > 0) {
         drawCalibrationLine(ctx, drawState.calibrationPoints, mousePos, scale);
       } else if (activeTool === 'distance' && drawState.points.length > 0) {
