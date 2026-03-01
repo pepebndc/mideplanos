@@ -22,13 +22,14 @@ const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string;
 
 export default function Toolbar({ activeTool, onToolChange, hasCalibration, variant = 'vertical' }: ToolbarProps) {
   const isHorizontal = variant === 'horizontal';
-  const btnSize = isHorizontal ? 'w-10 h-10' : 'w-11 h-11';
+  // Horizontal buttons are slightly smaller so all 7 tools fit on the narrowest phones without scrolling
+  const btnSize = isHorizontal ? 'w-9 h-9' : 'w-11 h-11';
   const tooltipPos = isHorizontal
     ? 'bottom-14 left-1/2 -translate-x-1/2'
     : 'left-14 top-1/2 -translate-y-1/2';
 
   return (
-    <div className={`flex items-center gap-1 select-none ${isHorizontal ? 'flex-row px-2 py-1' : 'flex-col py-3 px-2 bg-white border-r border-gray-100 shadow-sm'}`}>
+    <div className={`flex items-center select-none ${isHorizontal ? 'flex-row gap-0.5 px-1 py-1' : 'flex-col gap-1 py-3 px-2 bg-white border-r border-gray-100 shadow-sm'}`}>
       {TOOLS.map((tool) => {
         const isActive = activeTool === tool.id;
         const isCalibrate = tool.id === 'calibrate';
@@ -48,7 +49,7 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, vari
 
             {/* Calibration-active indicator dot */}
             {isCalibrate && hasCalibration && !isActive && (
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-green-500" />
             )}
 
             <span className={`absolute ${tooltipPos} bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg`}>

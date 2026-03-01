@@ -568,8 +568,8 @@ export default function Home() {
         className="md:hidden flex items-center border-t border-gray-100 shrink-0"
         style={{ backgroundColor: 'white' }}
       >
-        {/* Scrollable tool strip — flex-1 so the Layers button is always visible */}
-        <div className="flex-1 min-w-0 overflow-x-auto">
+        {/* Tool strip — sized to always fit without scrolling */}
+        <div className="flex-1 min-w-0 flex">
           <Toolbar
             activeTool={activeTool}
             onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}
