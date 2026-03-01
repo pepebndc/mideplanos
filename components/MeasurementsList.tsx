@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Measurement, CalibrationData } from '@/types';
 import { formatLength, formatArea } from '@/utils/measurements';
 import { Ruler, Square, Trash2, Edit2, Check, X, Download } from 'lucide-react';
@@ -27,6 +27,7 @@ export default function MeasurementsList({
 }: MeasurementsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const cancellingRef = useRef(false);
 
   const startEdit = (m: Measurement) => {
     setEditingId(m.id);
@@ -34,6 +35,7 @@ export default function MeasurementsList({
   };
 
   const confirmEdit = (id: string) => {
+    if (cancellingRef.current) { cancellingRef.current = false; return; }
     if (editValue.trim()) onRenameMeasurement(id, editValue.trim());
     setEditingId(null);
   };
@@ -199,9 +201,10 @@ export default function MeasurementsList({
                                 }}
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={() => confirmEdit(m.id)}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') confirmEdit(m.id);
-                                  if (e.key === 'Escape') setEditingId(null);
+                                  if (e.key === 'Enter') e.currentTarget.blur();
+                                  if (e.key === 'Escape') { cancellingRef.current = true; setEditingId(null); }
                                 }}
                                 autoFocus
                               />
