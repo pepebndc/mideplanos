@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Tool, Point, Measurement, CalibrationData, CanvasItem } from '@/types';
+import { Tool, Point, Measurement, CalibrationData, CanvasItem, PendingCalibration } from '@/types';
 import {
   calculatePixelDistance,
   calculatePixelArea,
@@ -46,11 +46,12 @@ interface Props {
   canvasItems: CanvasItem[];
   activeTool: Tool;
   calibration: CalibrationData | null;
+  calibrationMode: 'line' | 'area';
   measurements: Measurement[];
   selectedMeasurementId: string | null;
   selectedItemId: string | null;
   onMeasurementsChange: (m: Measurement[]) => void;
-  onCalibrationDrawn: (px: number) => void;
+  onCalibrationDrawn: (payload: PendingCalibration) => void;
   onSelectMeasurement: (id: string | null) => void;
   onSelectItem: (id: string | null) => void;
   onItemsChange: (items: CanvasItem[]) => void;
@@ -63,6 +64,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     canvasItems,
     activeTool,
     calibration,
+    calibrationMode,
     measurements,
     selectedMeasurementId,
     selectedItemId,
@@ -366,7 +368,9 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       let guidePt: Point | null = null;
       if ((activeTool === 'distance' || activeTool === 'area') && drawState.points.length > 0)
         guidePt = drawState.points[drawState.points.length - 1];
-      else if (activeTool === 'calibrate' && drawState.calibrationPoints.length > 0)
+      else if (activeTool === 'calibrate' && calibrationMode === 'area' && drawState.points.length > 0)
+        guidePt = drawState.points[drawState.points.length - 1];
+      else if (activeTool === 'calibrate' && calibrationMode === 'line' && drawState.calibrationPoints.length > 0)
         guidePt = drawState.calibrationPoints[drawState.calibrationPoints.length - 1];
 
       if (guidePt) {
@@ -383,8 +387,10 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         ctx.restore();
       }
 
-      if (activeTool === 'calibrate' && drawState.calibrationPoints.length > 0) {
+      if (activeTool === 'calibrate' && calibrationMode === 'line' && drawState.calibrationPoints.length > 0) {
         drawCalibrationLine(ctx, drawState.calibrationPoints, mousePos, scale);
+      } else if (activeTool === 'calibrate' && calibrationMode === 'area' && drawState.points.length > 0) {
+        drawCalibrationPolygon(ctx, drawState.points, mousePos, scale);
       } else if (activeTool === 'distance' && drawState.points.length > 0) {
         drawInProgressLine(ctx, drawState.points, mousePos, scale, calibration);
       } else if (activeTool === 'area' && drawState.points.length > 0) {
@@ -393,7 +399,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     }
 
     ctx.restore();
-  }, [transform, drawState, measurements, selectedMeasurementId, selectedItemId, mousePos, activeTool, canvasItems, cropState, draggedItem, draggedMeasurement, calibration]);
+  }, [transform, drawState, measurements, selectedMeasurementId, selectedItemId, mousePos, activeTool, calibrationMode, canvasItems, cropState, draggedItem, draggedMeasurement, calibration]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -526,13 +532,31 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // ── Calibrate ────────────────────────────────────────────────────────────
     if (activeTool === 'calibrate') {
-      if (!drawState.isDrawing) {
-        setDrawState({ isDrawing: true, points: [], calibrationPoints: [vpt] });
-      } else if (drawState.calibrationPoints.length === 1) {
-        // Place second point — finalization happens on mouseup so the user can drag to adjust
-        setDrawState((p) => ({ ...p, calibrationPoints: [p.calibrationPoints[0], vpt] }));
+      if (calibrationMode === 'line') {
+        if (!drawState.isDrawing) {
+          setDrawState({ isDrawing: true, points: [], calibrationPoints: [vpt] });
+        } else if (drawState.calibrationPoints.length === 1) {
+          setDrawState((p) => ({ ...p, calibrationPoints: [p.calibrationPoints[0], vpt] }));
+        }
+        adjustingLastPointRef.current = true;
+      } else {
+        // Area mode: draw polygon; close when clicking near first point or via double-click/Enter
+        const closeThreshold = 18 / transform.scale;
+        if (!drawState.isDrawing) {
+          setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+        } else if (drawState.points.length >= 3) {
+          const first = drawState.points[0];
+          if (Math.hypot(vpt.x - first.x, vpt.y - first.y) < closeThreshold) {
+            const pts = drawState.points;
+            const pixelArea = calculatePixelArea(pts);
+            onCalibrationDrawn({ type: 'area', pixelArea });
+            setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+            return;
+          }
+        }
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        adjustingLastPointRef.current = true;
       }
-      adjustingLastPointRef.current = true;
       return;
     }
 
@@ -612,14 +636,14 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // Point drag-to-adjust: move the last placed point while button is held
     if (adjustingLastPointRef.current) {
-      if ((activeTool === 'distance' || activeTool === 'area') && drawState.isDrawing) {
+      if ((activeTool === 'distance' || activeTool === 'area' || (activeTool === 'calibrate' && calibrationMode === 'area')) && drawState.isDrawing) {
         setDrawState((p) => {
           if (p.points.length === 0) return p;
           const pts = [...p.points];
           pts[pts.length - 1] = vpt;
           return { ...p, points: pts };
         });
-      } else if (activeTool === 'calibrate' && drawState.isDrawing) {
+      } else if (activeTool === 'calibrate' && calibrationMode === 'line' && drawState.isDrawing) {
         setDrawState((p) => {
           const calPts = [...p.calibrationPoints];
           if (calPts.length === 0) return p;
@@ -669,9 +693,9 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     // Commit the adjusted point position
     if (adjustingLastPointRef.current) {
       adjustingLastPointRef.current = false;
-      // For calibrate: if both points are placed, fire calibration now
-      if (activeTool === 'calibrate' && drawStateRef.current.calibrationPoints.length === 2) {
-        onCalibrationDrawn(calculatePixelDistance(drawStateRef.current.calibrationPoints));
+      // For calibrate (line mode): if both points are placed, fire calibration now
+      if (activeTool === 'calibrate' && calibrationMode === 'line' && drawStateRef.current.calibrationPoints.length === 2) {
+        onCalibrationDrawn({ type: 'line', pixelLength: calculatePixelDistance(drawStateRef.current.calibrationPoints) });
         setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
       }
     }
@@ -694,6 +718,13 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     if (activeTool === 'area' && ds.isDrawing && ds.points.length >= 3) {
       const pts = ds.points.slice(0, -1);
       finalizeMeasurement('area', pts.length >= 3 ? pts : ds.points);
+      return;
+    }
+    if (activeTool === 'calibrate' && calibrationMode === 'area' && ds.isDrawing && ds.points.length >= 3) {
+      const pts = ds.points.slice(0, -1);
+      const closed = pts.length >= 3 ? pts : ds.points;
+      onCalibrationDrawn({ type: 'area', pixelArea: calculatePixelArea(closed) });
+      setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
       return;
     }
   };
@@ -753,10 +784,23 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // Drawing tools — tap to add a point (same logic as mouse: adjust on hold)
     if (activeTool === 'calibrate') {
-      if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [], calibrationPoints: [vpt] });
-      else if (drawState.calibrationPoints.length === 1) {
-        // Place second point; finalization happens on touchend so the user can drag to adjust
-        setDrawState((p) => ({ ...p, calibrationPoints: [p.calibrationPoints[0], vpt] }));
+      if (calibrationMode === 'line') {
+        if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [], calibrationPoints: [vpt] });
+        else if (drawState.calibrationPoints.length === 1)
+          setDrawState((p) => ({ ...p, calibrationPoints: [p.calibrationPoints[0], vpt] }));
+      } else {
+        const closeThreshold = 24 / transform.scale;
+        if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+        else if (drawState.points.length >= 3) {
+          const first = drawState.points[0];
+          if (Math.hypot(vpt.x - first.x, vpt.y - first.y) < closeThreshold) {
+            const pts = drawState.points;
+            onCalibrationDrawn({ type: 'area', pixelArea: calculatePixelArea(pts) });
+            setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+            return;
+          }
+        }
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
       }
       adjustingLastPointRef.current = true;
       return;
@@ -837,14 +881,14 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // Point drag-to-adjust: slide the last placed point while finger is held down
     if (adjustingLastPointRef.current) {
-      if ((activeTool === 'distance' || activeTool === 'area') && drawStateRef.current.isDrawing) {
+      if ((activeTool === 'distance' || activeTool === 'area' || (activeTool === 'calibrate' && calibrationMode === 'area')) && drawStateRef.current.isDrawing) {
         setDrawState((p) => {
           if (p.points.length === 0) return p;
           const pts = [...p.points];
           pts[pts.length - 1] = vpt;
           return { ...p, points: pts };
         });
-      } else if (activeTool === 'calibrate' && drawStateRef.current.isDrawing) {
+      } else if (activeTool === 'calibrate' && calibrationMode === 'line' && drawStateRef.current.isDrawing) {
         setDrawState((p) => {
           const calPts = [...p.calibrationPoints];
           if (calPts.length === 0) return p;
@@ -854,7 +898,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, cropState, transform, canvasToVirtual]);
+  }, [activeTool, calibrationMode, cropState, transform, canvasToVirtual]);
 
   const handleTouchEnd = useCallback((_e: TouchEvent) => {
     pinchRef.current = null;
@@ -878,13 +922,13 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     // Commit the adjusted point position (mirror of mouseup logic)
     if (adjustingLastPointRef.current) {
       adjustingLastPointRef.current = false;
-      if (activeTool === 'calibrate' && drawStateRef.current.calibrationPoints.length === 2) {
-        onCalibrationDrawn(calculatePixelDistance(drawStateRef.current.calibrationPoints));
+      if (activeTool === 'calibrate' && calibrationMode === 'line' && drawStateRef.current.calibrationPoints.length === 2) {
+        onCalibrationDrawn({ type: 'line', pixelLength: calculatePixelDistance(drawStateRef.current.calibrationPoints) });
         setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, cropState, draggedItem, canvasItems, onItemsChange, onCalibrationDrawn]);
+  }, [activeTool, calibrationMode, cropState, draggedItem, canvasItems, onItemsChange, onCalibrationDrawn]);
 
   // ── Register touch handlers with { passive: false } ───────────────────────────
   // React registers JSX touch handlers as passive by default (breaks preventDefault).
@@ -982,6 +1026,10 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
           finalizeMeasurement('distance', drawState.points);
         else if (activeTool === 'area' && drawState.points.length >= 3)
           finalizeMeasurement('area', drawState.points);
+        else if (activeTool === 'calibrate' && calibrationMode === 'area' && drawState.points.length >= 3) {
+          onCalibrationDrawn({ type: 'area', pixelArea: calculatePixelArea(drawState.points) });
+          setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+        }
       }
       if (e.key === 'Enter' && cropState) {
         applyCrop();
@@ -990,7 +1038,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawState, activeTool, measurements, calibration, cropState]);
+  }, [drawState, activeTool, calibrationMode, measurements, calibration, cropState, onCalibrationDrawn]);
 
   // ── Finalize measurement ─────────────────────────────────────────────────────
 
@@ -1119,7 +1167,8 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/75 text-white text-xs rounded-xl px-4 py-2 pointer-events-none backdrop-blur-sm">
           {activeTool === 'distance' && <>Clic para añadir punto · <strong>Doble clic</strong> o <strong>Enter</strong> para finalizar · Esc para cancelar</>}
           {activeTool === 'area' && <>Clic para añadir vértice · <strong>Doble clic</strong> o <strong>Enter</strong> para cerrar · Esc para cancelar</>}
-          {activeTool === 'calibrate' && drawState.calibrationPoints.length === 1 && <>Clic en el segundo punto de referencia</>}
+          {activeTool === 'calibrate' && calibrationMode === 'line' && drawState.calibrationPoints.length === 1 && <>Clic en el segundo punto de referencia</>}
+          {activeTool === 'calibrate' && calibrationMode === 'area' && drawState.points.length > 0 && <>Clic para añadir vértice · Clic en el primer punto o <strong>Enter</strong> para cerrar · Esc para cancelar</>}
         </div>
       )}
 
@@ -1280,6 +1329,30 @@ function drawCalibrationLine(ctx: CanvasRenderingContext2D, pts: Point[], mouse:
   [pts[0], end].forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 5 / scale, 0, Math.PI * 2); ctx.fillStyle = '#F59E0B'; ctx.fill(); });
   const mid = midpoint(pts[0], end);
   drawLabel(ctx, `${calculatePixelDistance([pts[0], end]).toFixed(0)}px`, mid.x, mid.y, '#F59E0B', scale);
+  ctx.restore();
+}
+
+function drawCalibrationPolygon(ctx: CanvasRenderingContext2D, pts: Point[], mouse: Point, scale: number) {
+  const amber = '#F59E0B';
+  ctx.save();
+  ctx.strokeStyle = amber;
+  ctx.fillStyle = amber + '18';
+  ctx.lineWidth = 2.5 / scale;
+  ctx.setLineDash([8 / scale, 4 / scale]);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.lineTo(mouse.x, mouse.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  pts.forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 5 / scale, 0, Math.PI * 2); ctx.fillStyle = amber; ctx.fill(); });
+  if (pts.length >= 2) {
+    const allPts = [...pts, mouse];
+    const pxArea = calculatePixelArea(allPts);
+    const c = centroid(allPts);
+    drawLabel(ctx, `${pxArea.toFixed(0)} px²`, c.x, c.y, amber, scale);
+  }
   ctx.restore();
 }
 

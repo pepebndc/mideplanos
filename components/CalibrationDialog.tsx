@@ -1,29 +1,54 @@
 'use client';
 
 import { useState } from 'react';
-import { CalibrationData, Unit } from '@/types';
+import { CalibrationData, Unit, PendingCalibration } from '@/types';
 import { UNIT_LABELS } from '@/utils/measurements';
-import { X, Ruler } from 'lucide-react';
+import { X, Ruler, Square } from 'lucide-react';
 
 interface CalibrationDialogProps {
-  pixelLength: number;
+  pending: PendingCalibration;
   onConfirm: (calibration: CalibrationData) => void;
   onCancel: () => void;
 }
 
-export default function CalibrationDialog({ pixelLength, onConfirm, onCancel }: CalibrationDialogProps) {
-  const [realLength, setRealLength] = useState('');
+export default function CalibrationDialog({ pending, onConfirm, onCancel }: CalibrationDialogProps) {
   const [unit, setUnit] = useState<Unit>('m');
+  const [realLength, setRealLength] = useState('');
+  const [realArea, setRealArea] = useState('');
+
+  const isLine = pending.type === 'line';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const value = parseFloat(realLength);
-    if (isNaN(value) || value <= 0) {
-      alert('Por favor, introduce una medida real válida mayor que 0.');
-      return;
+    if (isLine) {
+      const value = parseFloat(realLength);
+      if (isNaN(value) || value <= 0) {
+        alert('Por favor, introduce una medida real válida mayor que 0.');
+        return;
+      }
+      const pixelsPerUnit = pending.pixelLength / value;
+      onConfirm({
+        pixelLength: pending.pixelLength,
+        realLength: value,
+        unit,
+        pixelsPerUnit,
+      });
+    } else {
+      const value = parseFloat(realArea);
+      if (isNaN(value) || value <= 0) {
+        alert('Por favor, introduce un área real válida mayor que 0.');
+        return;
+      }
+      const pixelsPerUnit = Math.sqrt(pending.pixelArea / value);
+      const pixelLength = Math.sqrt(pending.pixelArea);
+      const realLengthVal = Math.sqrt(value);
+      onConfirm({
+        pixelLength,
+        realLength: realLengthVal,
+        unit,
+        pixelsPerUnit,
+      });
     }
-    const pixelsPerUnit = pixelLength / value;
-    onConfirm({ pixelLength, realLength: value, unit, pixelsPerUnit });
   };
 
   return (
@@ -32,8 +57,10 @@ export default function CalibrationDialog({ pixelLength, onConfirm, onCancel }: 
         {/* Header */}
         <div className="bg-amber-500 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Ruler className="w-5 h-5 text-white" />
-            <h2 className="text-white font-bold text-lg">Calibración de escala</h2>
+            {isLine ? <Ruler className="w-5 h-5 text-white" /> : <Square className="w-5 h-5 text-white" />}
+            <h2 className="text-white font-bold text-lg">
+              {isLine ? 'Calibración por línea' : 'Calibración por área'}
+            </h2>
           </div>
           <button onClick={onCancel} className="text-white/80 hover:text-white transition-colors">
             <X className="w-5 h-5" />
@@ -43,33 +70,27 @@ export default function CalibrationDialog({ pixelLength, onConfirm, onCancel }: 
         <form onSubmit={handleSubmit} className="p-6">
           {/* Pixel info */}
           <div className="bg-amber-50 rounded-xl p-4 mb-5 border border-amber-100">
-            <p className="text-sm text-amber-800 font-medium">Línea de referencia dibujada</p>
-            <p className="text-2xl font-bold text-amber-700 mt-1">{pixelLength.toFixed(0)} px</p>
-            <p className="text-xs text-amber-600 mt-1">
-              Indica la medida real que corresponde a esta línea en el plano.
-            </p>
+            {isLine ? (
+              <>
+                <p className="text-sm text-amber-800 font-medium">Línea de referencia dibujada</p>
+                <p className="text-2xl font-bold text-amber-700 mt-1">{pending.pixelLength.toFixed(0)} px</p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Indica la medida real que corresponde a esta línea en el plano.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-amber-800 font-medium">Área de referencia seleccionada</p>
+                <p className="text-2xl font-bold text-amber-700 mt-1">{pending.pixelArea.toFixed(0)} px²</p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Indica el área real que corresponde a esta habitación o zona en el plano (en {unit === 'm' ? 'm²' : unit === 'cm' ? 'cm²' : unit === 'mm' ? 'mm²' : unit === 'ft' ? 'ft²' : 'in²'}).
+                </p>
+              </>
+            )}
           </div>
 
           <div className="space-y-4">
-            {/* Real length input */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Medida real de la referencia
-              </label>
-              <input
-                type="number"
-                step="any"
-                min="0.001"
-                value={realLength}
-                onChange={(e) => setRealLength(e.target.value)}
-                placeholder="Ej: 5.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
-                autoFocus
-                required
-              />
-            </div>
-
-            {/* Unit selector */}
+            {/* Unit selector first so area hint can use it */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Unidad de medida
@@ -93,12 +114,56 @@ export default function CalibrationDialog({ pixelLength, onConfirm, onCancel }: 
               <p className="text-xs text-gray-400 mt-1.5">{UNIT_LABELS[unit]}</p>
             </div>
 
+            {isLine ? (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Medida real de la referencia
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0.001"
+                  value={realLength}
+                  onChange={(e) => setRealLength(e.target.value)}
+                  placeholder="Ej: 5.00"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
+                  autoFocus
+                  required
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Área real de la referencia ({unit}²)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0.001"
+                  value={realArea}
+                  onChange={(e) => setRealArea(e.target.value)}
+                  placeholder="Ej: 15.50"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
+                  autoFocus
+                  required
+                />
+              </div>
+            )}
+
             {/* Preview */}
-            {realLength && !isNaN(parseFloat(realLength)) && parseFloat(realLength) > 0 && (
+            {isLine && realLength && !isNaN(parseFloat(realLength)) && parseFloat(realLength) > 0 && (
               <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
                 <p className="text-xs text-blue-700 font-medium">Vista previa de escala</p>
                 <p className="text-sm text-blue-900 mt-0.5">
-                  1 {unit} = <strong>{(pixelLength / parseFloat(realLength)).toFixed(1)} px</strong>
+                  1 {unit} = <strong>{(pending.pixelLength / parseFloat(realLength)).toFixed(1)} px</strong>
+                </p>
+              </div>
+            )}
+            {!isLine && realArea && !isNaN(parseFloat(realArea)) && parseFloat(realArea) > 0 && (
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                <p className="text-xs text-blue-700 font-medium">Vista previa de escala</p>
+                <p className="text-sm text-blue-900 mt-0.5">
+                  1 {unit} = <strong>{Math.sqrt(pending.pixelArea / parseFloat(realArea)).toFixed(1)} px</strong>
                 </p>
               </div>
             )}

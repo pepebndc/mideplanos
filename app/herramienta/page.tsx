@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Layers } from 'lucide-react';
-import { Tool, Measurement, CalibrationData, CanvasItem, Project, SaveStatus } from '@/types';
+import { Tool, Measurement, CalibrationData, CanvasItem, Project, SaveStatus, PendingCalibration } from '@/types';
 import { renderPdfPageToDataUrl } from '@/utils/pdfUtils';
 import { pixelsToReal, pixelAreaToReal, generateId } from '@/utils/measurements';
 import { saveProject, listProjects, readFileAsDataURL } from '@/utils/storage';
@@ -30,7 +30,8 @@ export default function Home() {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [calibration, setCalibration] = useState<CalibrationData | null>(null);
-  const [pendingCalibration, setPendingCalibration] = useState<number | null>(null);
+  const [pendingCalibration, setPendingCalibration] = useState<PendingCalibration | null>(null);
+  const [calibrationMode, setCalibrationMode] = useState<'line' | 'area'>('line');
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Mobile panel state ──────────────────────────────────────────────────────
@@ -339,8 +340,8 @@ export default function Home() {
   }, []);
 
   // ── Calibration ─────────────────────────────────────────────────────────────
-  const handleCalibrationDrawn = useCallback((px: number) => {
-    setPendingCalibration(px);
+  const handleCalibrationDrawn = useCallback((payload: PendingCalibration) => {
+    setPendingCalibration(payload);
     setActiveTool('pan');
   }, []);
 
@@ -440,6 +441,8 @@ export default function Home() {
             activeTool={activeTool}
             onToolChange={setActiveTool}
             hasCalibration={!!calibration}
+            calibrationMode={calibrationMode}
+            onCalibrationModeChange={setCalibrationMode}
             variant="vertical"
           />
         </div>
@@ -451,6 +454,7 @@ export default function Home() {
             canvasItems={canvasItems}
             activeTool={activeTool}
             calibration={calibration}
+            calibrationMode={calibrationMode}
             measurements={measurements}
             selectedMeasurementId={selectedMeasurementId}
             selectedItemId={selectedItemId}
@@ -574,6 +578,8 @@ export default function Home() {
             activeTool={activeTool}
             onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}
             hasCalibration={!!calibration}
+            calibrationMode={calibrationMode}
+            onCalibrationModeChange={setCalibrationMode}
             variant="horizontal"
           />
         </div>
@@ -605,7 +611,7 @@ export default function Home() {
       {/* Calibration dialog */}
       {pendingCalibration !== null && (
         <CalibrationDialog
-          pixelLength={pendingCalibration}
+          pending={pendingCalibration}
           onConfirm={handleCalibrationConfirm}
           onCancel={() => setPendingCalibration(null)}
         />

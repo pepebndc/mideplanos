@@ -40,6 +40,11 @@ export interface CalibrationData {
   pixelsPerUnit: number;
 }
 
+/** Payload when user finishes drawing a calibration reference (line or area). */
+export type PendingCalibration =
+  | { type: 'line'; pixelLength: number }
+  | { type: 'area'; pixelArea: number };
+
 export interface DistanceMeasurement {
   id: string;
   type: 'distance';
