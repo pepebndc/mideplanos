@@ -8,6 +8,7 @@ interface ToolbarProps {
   onToolChange: (tool: Tool) => void;
   hasCalibration: boolean;
   onRecalibrate: () => void;
+  variant?: 'vertical' | 'horizontal';
 }
 
 const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string; activeClass: string }[] = [
@@ -20,11 +21,15 @@ const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string;
   { id: 'delete', icon: <Trash2 className="w-5 h-5" />, label: 'Eliminar medida', shortcut: 'Del', activeClass: 'bg-red-100 text-red-500' },
 ];
 
-export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRecalibrate }: ToolbarProps) {
+export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRecalibrate, variant = 'vertical' }: ToolbarProps) {
+  const isHorizontal = variant === 'horizontal';
+  const btnSize = isHorizontal ? 'w-10 h-10' : 'w-11 h-11';
+  const tooltipPos = isHorizontal
+    ? 'bottom-14 left-1/2 -translate-x-1/2'
+    : 'left-14 top-1/2 -translate-y-1/2';
+
   return (
-    <div className="flex flex-col items-center gap-1 py-3 px-2 bg-white border-r border-gray-100 shadow-sm select-none">
-
-
+    <div className={`flex items-center gap-1 select-none ${isHorizontal ? 'flex-row px-2 py-1' : 'flex-col py-3 px-2 bg-white border-r border-gray-100 shadow-sm'}`}>
       {TOOLS.map((tool) => {
         const isActive = activeTool === tool.id;
         return (
@@ -33,12 +38,12 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRe
             onClick={() => onToolChange(tool.id)}
             title={`${tool.label} (${tool.shortcut})`}
             className={`
-              relative group w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0
+              relative group ${btnSize} rounded-xl flex items-center justify-center transition-all duration-150 shrink-0
               ${isActive ? tool.activeClass + ' shadow-sm' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}
             `}
           >
             {tool.icon}
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+            <span className={`absolute ${tooltipPos} bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg`}>
               {tool.label}
               <span className="ml-1.5 text-gray-400 text-[10px]">{tool.shortcut}</span>
             </span>
@@ -48,17 +53,17 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRe
 
       {hasCalibration && (
         <>
-          <div className="w-full h-px bg-gray-100 my-1" />
+          <div className={isHorizontal ? 'w-px h-6 bg-gray-100 mx-1' : 'w-full h-px bg-gray-100 my-1'} />
           <button
             onClick={onRecalibrate}
             title="Recalibrar escala"
-            className="relative group w-11 h-11 rounded-xl flex items-center justify-center text-amber-400 hover:bg-amber-50 transition-colors shrink-0"
+            className={`relative group ${btnSize} rounded-xl flex items-center justify-center text-amber-400 hover:bg-amber-50 transition-colors shrink-0`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+            <span className={`absolute ${tooltipPos} bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg`}>
               Recalibrar
             </span>
           </button>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { X, Layers } from 'lucide-react';
 import { Tool, Measurement, CalibrationData, CanvasItem, Project, SaveStatus } from '@/types';
 import { renderPdfPageToDataUrl } from '@/utils/pdfUtils';
 import { pixelsToReal, pixelAreaToReal, generateId } from '@/utils/measurements';
@@ -31,6 +32,9 @@ export default function Home() {
   const [calibration, setCalibration] = useState<CalibrationData | null>(null);
   const [pendingCalibration, setPendingCalibration] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // ── Mobile panel state ──────────────────────────────────────────────────────
+  const [showMobilePanel, setShowMobilePanel] = useState(false);
 
   // ── Project state ───────────────────────────────────────────────────────────
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -400,13 +404,17 @@ export default function Home() {
         }}
       />
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        <Toolbar
-          activeTool={activeTool}
-          onToolChange={setActiveTool}
-          hasCalibration={!!calibration}
-          onRecalibrate={() => setActiveTool('calibrate')}
-        />
+      <div className="flex flex-1 overflow-hidden min-h-0 relative">
+        {/* Left toolbar — desktop only */}
+        <div className="hidden md:block">
+          <Toolbar
+            activeTool={activeTool}
+            onToolChange={setActiveTool}
+            hasCalibration={!!calibration}
+            onRecalibrate={() => setActiveTool('calibrate')}
+            variant="vertical"
+          />
+        </div>
 
         <div className="flex-1 relative overflow-hidden min-w-0">
           {isLoading && <LoadingOverlay />}
@@ -426,7 +434,8 @@ export default function Home() {
           />
         </div>
 
-        <aside className="w-64 flex flex-col overflow-hidden shrink-0" style={{ backgroundColor: '#F1EFEA', borderLeft: '1px solid #C8C4BB' }}>
+        {/* Right aside — desktop only */}
+        <aside className="hidden md:flex w-64 flex-col overflow-hidden shrink-0" style={{ backgroundColor: '#F1EFEA', borderLeft: '1px solid #C8C4BB' }}>
           <ImageLayersPanel
             items={canvasItems}
             selectedItemId={selectedItemId}
@@ -449,6 +458,99 @@ export default function Home() {
             <Attribution className="px-4 py-3" />
           </div>
         </aside>
+
+        {/* Mobile panel backdrop */}
+        {showMobilePanel && (
+          <div
+            className="md:hidden absolute inset-0 z-30 bg-black/25"
+            onClick={() => setShowMobilePanel(false)}
+          />
+        )}
+
+        {/* Mobile panel — bottom sheet */}
+        <div
+          className={`md:hidden absolute inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${showMobilePanel ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
+          style={{ maxHeight: '65vh', backgroundColor: '#F1EFEA' }}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center pt-2 pb-1 shrink-0">
+            <div className="w-10 h-1 rounded-full" style={{ backgroundColor: '#C8C4BB' }} />
+          </div>
+          {/* Sheet header */}
+          <div
+            className="flex items-center justify-between px-4 py-2 shrink-0"
+            style={{ borderBottom: '1px solid #C8C4BB' }}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9A9590' }}>
+              Capas y Medidas
+            </span>
+            <button
+              onClick={() => setShowMobilePanel(false)}
+              className="w-7 h-7 flex items-center justify-center rounded-full transition-colors"
+              style={{ backgroundColor: 'rgba(26,44,61,0.06)', color: '#7A8A99' }}
+              aria-label="Cerrar panel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Sheet content */}
+          <div className="flex-1 overflow-y-auto">
+            <ImageLayersPanel
+              items={canvasItems}
+              selectedItemId={selectedItemId}
+              onSelectItem={setSelectedItemId}
+              onDeleteItem={handleDeleteItem}
+              onReorderItem={handleReorderItem}
+              onResetCrop={handleResetCrop}
+              onActivateCrop={handleActivateCrop}
+            />
+            <MeasurementsList
+              measurements={measurements}
+              calibration={calibration}
+              selectedId={selectedMeasurementId}
+              onSelectMeasurement={setSelectedMeasurementId}
+              onDeleteMeasurement={handleDeleteMeasurement}
+              onRenameMeasurement={handleRenameMeasurement}
+              onRecolorMeasurement={handleRecolorMeasurement}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile bottom toolbar — visible only on mobile */}
+      <div
+        className="md:hidden flex items-center border-t border-gray-100 shrink-0"
+        style={{ backgroundColor: 'white' }}
+      >
+        <Toolbar
+          activeTool={activeTool}
+          onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}
+          hasCalibration={!!calibration}
+          onRecalibrate={() => { setActiveTool('calibrate'); setShowMobilePanel(false); }}
+          variant="horizontal"
+        />
+        <div className="flex-1" />
+        {/* Panel toggle button */}
+        <button
+          onClick={() => setShowMobilePanel((v) => !v)}
+          className="relative flex items-center justify-center w-10 h-10 rounded-xl mx-2 transition-colors shrink-0"
+          style={{
+            color: showMobilePanel ? '#1A2C3D' : '#9A9590',
+            backgroundColor: showMobilePanel ? 'rgba(26,44,61,0.08)' : 'transparent',
+          }}
+          title="Capas y medidas"
+          aria-label="Capas y medidas"
+        >
+          <Layers className="w-5 h-5" />
+          {measurements.length > 0 && (
+            <span
+              className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full text-[9px] font-bold flex items-center justify-center text-white px-0.5"
+              style={{ backgroundColor: '#1A2C3D' }}
+            >
+              {measurements.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Calibration dialog */}

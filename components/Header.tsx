@@ -55,12 +55,12 @@ export default function Header({
   const isUnsaved = saveStatus === 'unsaved';
 
   return (
-    <header className="h-12 bg-white border-b border-gray-100 flex items-center px-4 gap-3 shadow-sm z-10 shrink-0">
+    <header className="h-12 bg-white border-b border-gray-100 flex items-center px-3 gap-2 sm:px-4 sm:gap-3 shadow-sm z-10 shrink-0">
 
       {/* Brand */}
       <button
         onClick={onLogoClick}
-        className="flex items-center gap-2 mr-1 shrink-0 rounded-lg px-1 -ml-1 transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1.5 sm:gap-2 mr-1 shrink-0 rounded-lg px-1 -ml-1 transition-colors hover:bg-gray-100"
         aria-label="Ir a la página de inicio"
       >
         {/* Dimension-line mark */}
@@ -72,15 +72,15 @@ export default function Header({
           <line x1="2" y1="17.5" x2="2" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
           <line x1="19" y1="17.5" x2="19" y2="26.5" stroke="#1A2C3D" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.35" />
         </svg>
-        <span className="font-bold text-gray-900 text-sm tracking-tight" style={{ letterSpacing: '-0.02em' }}>mideplanos</span>
+        <span className="font-bold text-gray-900 text-sm tracking-tight hidden sm:block" style={{ letterSpacing: '-0.02em' }}>mideplanos</span>
       </button>
 
-      <div className="h-5 w-px bg-gray-200 shrink-0" />
+      <div className="h-5 w-px bg-gray-200 shrink-0 hidden sm:block" />
 
       {/* Project name + save-status pill */}
       {canvasItems.length > 0 && (
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium truncate max-w-[200px]" style={{ color: '#1A2C3D' }}>
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[200px]" style={{ color: '#1A2C3D' }}>
             {projectName}
           </span>
           <span
@@ -93,7 +93,7 @@ export default function Header({
             {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
             {isSaved && <Save className="w-3 h-3" />}
             {isUnsaved && <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#B87F14' }} />}
-            {isSaving ? 'Guardando…' : isSaved ? 'Guardado' : 'Sin guardar'}
+            <span className="hidden sm:inline">{isSaving ? 'Guardando…' : isSaved ? 'Guardado' : 'Sin guardar'}</span>
           </span>
         </div>
       )}
@@ -108,7 +108,7 @@ export default function Header({
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-xs text-gray-500 min-w-[56px] text-center">
+          <span className="text-xs text-gray-500 min-w-[40px] sm:min-w-[56px] text-center">
             {selectedItem.pdfPage ?? 1} / {selectedItem.pdfTotalPages}
           </span>
           <button
@@ -121,28 +121,29 @@ export default function Header({
         </div>
       )}
 
-      {/* Calibration badge */}
+      {/* Calibration badge — desktop only */}
       {calibration && canvasItems.length > 0 && (
-        <span className="text-xs bg-green-50 text-green-700 rounded-full px-2.5 py-0.5 font-medium border border-green-100 shrink-0">
+        <span className="hidden md:inline-flex text-xs bg-green-50 text-green-700 rounded-full px-2.5 py-0.5 font-medium border border-green-100 shrink-0">
           1 {calibration.unit} = {calibration.pixelsPerUnit.toFixed(1)} px
         </span>
       )}
 
       {/* Right actions */}
-      <div className="ml-auto flex items-center gap-1.5 shrink-0">
+      <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
 
         {canvasItems.length > 0 && (
           <>
             {/* Add image */}
             <button
               onClick={() => addInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors border"
+              className="flex items-center gap-1.5 text-sm rounded-lg px-2 sm:px-3 py-1.5 transition-colors border"
               style={{ color: '#7A8A99', backgroundColor: 'rgba(26,44,61,0.04)', borderColor: '#C8C4BB' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#1A2C3D'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7A8A99'; }}
+              title="Añadir imagen"
             >
               <Plus className="w-4 h-4" />
-              Añadir
+              <span className="hidden sm:inline">Añadir</span>
             </button>
             <input
               ref={addInputRef}
@@ -157,25 +158,27 @@ export default function Header({
         {/* Projects history */}
         <button
           onClick={onOpenProjects}
-          className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors border"
+          className="flex items-center gap-1.5 text-sm rounded-lg px-2 sm:px-3 py-1.5 transition-colors border"
           style={{ color: '#7A8A99', backgroundColor: 'rgba(26,44,61,0.04)', borderColor: '#C8C4BB' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#1A2C3D'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7A8A99'; }}
+          title="Proyectos"
         >
           <Folder className="w-4 h-4" />
-          Proyectos
+          <span className="hidden sm:inline">Proyectos</span>
         </button>
 
         {/* New / open */}
         <button
           onClick={onNewFile}
-          className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5 transition-colors border"
+          className="flex items-center gap-1.5 text-sm rounded-lg px-2 sm:px-3 py-1.5 transition-colors border"
           style={{ color: '#7A8A99', backgroundColor: 'rgba(26,44,61,0.04)', borderColor: '#C8C4BB' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#1A2C3D'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7A8A99'; }}
+          title="Nuevo proyecto"
         >
           <FolderOpen className="w-4 h-4" />
-          Nuevo
+          <span className="hidden sm:inline">Nuevo</span>
         </button>
 
       </div>
