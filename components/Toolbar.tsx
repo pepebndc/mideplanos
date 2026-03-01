@@ -1,6 +1,7 @@
 'use client';
 
 import { Tool } from '@/types';
+import type { DistanceMode } from '@/components/MeasurementCanvas';
 import { MousePointer2, Hand, Ruler, Square, Crosshair, Trash2, Crop } from 'lucide-react';
 
 interface ToolbarProps {
@@ -9,6 +10,8 @@ interface ToolbarProps {
   hasCalibration: boolean;
   calibrationMode?: 'line' | 'area';
   onCalibrationModeChange?: (mode: 'line' | 'area') => void;
+  distanceMode?: DistanceMode;
+  onDistanceModeChange?: (mode: DistanceMode) => void;
   variant?: 'vertical' | 'horizontal';
 }
 
@@ -22,12 +25,13 @@ const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string;
   { id: 'delete', icon: <Trash2 className="w-5 h-5" />, label: 'Eliminar medida', shortcut: 'Del', activeClass: 'bg-red-100 text-red-500' },
 ];
 
-export default function Toolbar({ activeTool, onToolChange, hasCalibration, calibrationMode = 'line', onCalibrationModeChange, variant = 'vertical' }: ToolbarProps) {
+export default function Toolbar({ activeTool, onToolChange, hasCalibration, calibrationMode = 'line', onCalibrationModeChange, distanceMode = 'line', onDistanceModeChange, variant = 'vertical' }: ToolbarProps) {
   const isHorizontal = variant === 'horizontal';
   const tooltipPos = isHorizontal
     ? 'bottom-14 left-1/2 -translate-x-1/2'
     : 'left-14 top-1/2 -translate-y-1/2';
   const showCalibrationMode = activeTool === 'calibrate' && onCalibrationModeChange;
+  const showDistanceMode = activeTool === 'distance' && onDistanceModeChange;
 
   return (
     <div className={`flex items-center select-none ${isHorizontal ? 'flex-row w-full py-1' : 'flex-col gap-1 py-3 px-2 bg-white border-r border-gray-100 shadow-sm'}`}>
@@ -80,6 +84,31 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, cali
                   }`}
                 >
                   Área
+                </button>
+              </div>
+            )}
+            {/* Distance mode: single segment vs polyline */}
+            {tool.id === 'distance' && showDistanceMode && (
+              <div className={`flex ${isHorizontal ? 'flex-row gap-0.5 mt-0.5' : 'flex-col gap-0.5 mt-0.5'}`}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDistanceModeChange('line'); }}
+                  title="Un solo segmento (dos puntos)"
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    distanceMode === 'line' ? 'bg-blue-200 text-blue-800' : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  Línea
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDistanceModeChange('polyline'); }}
+                  title="Varios segmentos (polilínea)"
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    distanceMode === 'polyline' ? 'bg-blue-200 text-blue-800' : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  Polilínea
                 </button>
               </div>
             )}

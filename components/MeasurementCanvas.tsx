@@ -42,11 +42,14 @@ export interface MeasurementCanvasRef {
   getThumbnail: () => string;
 }
 
+export type DistanceMode = 'line' | 'polyline';
+
 interface Props {
   canvasItems: CanvasItem[];
   activeTool: Tool;
   calibration: CalibrationData | null;
   calibrationMode: 'line' | 'area';
+  distanceMode: DistanceMode;
   measurements: Measurement[];
   selectedMeasurementId: string | null;
   selectedItemId: string | null;
@@ -65,6 +68,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     activeTool,
     calibration,
     calibrationMode,
+    distanceMode,
     measurements,
     selectedMeasurementId,
     selectedItemId,
@@ -93,6 +97,10 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
   // Space bar temporarily activates pan (like Figma)
   const spaceHeldRef = useRef(false);
+  // Double-tap on touch: finalize polyline/area without relying on double-click
+  const lastTapRef = useRef<{ time: number; point: Point } | null>(null);
+  const DOUBLE_TAP_MS = 400;
+  const DOUBLE_TAP_PX = 30;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -564,10 +572,15 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     if (activeTool === 'distance') {
       if (!drawState.isDrawing) {
         setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+        adjustingLastPointRef.current = true;
+      } else if (distanceMode === 'line' && drawState.points.length === 1) {
+        // Line mode: add second point; user can drag to adjust, finalize on mouseup
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        adjustingLastPointRef.current = true;
       } else {
         setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        adjustingLastPointRef.current = true;
       }
-      adjustingLastPointRef.current = true;
       return;
     }
 
@@ -698,6 +711,11 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         onCalibrationDrawn({ type: 'line', pixelLength: calculatePixelDistance(drawStateRef.current.calibrationPoints) });
         setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
       }
+      // For distance (line mode): two points placed and adjusted → finalize
+      if (activeTool === 'distance' && distanceMode === 'line' && drawStateRef.current.points.length === 2) {
+        finalizeMeasurement('distance', drawStateRef.current.points);
+        setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+      }
     }
 
     if (e.button === 1) {
@@ -710,7 +728,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     // The second click of a double-click fires a mousedown which added an extra point.
     // Use drawStateRef for the freshest value, then remove that extra point.
     const ds = drawStateRef.current;
-    if (activeTool === 'distance' && ds.isDrawing && ds.points.length >= 2) {
+    if (activeTool === 'distance' && distanceMode === 'polyline' && ds.isDrawing && ds.points.length >= 2) {
       const pts = ds.points.slice(0, -1);
       finalizeMeasurement('distance', pts.length >= 2 ? pts : ds.points);
       return;
@@ -806,14 +824,51 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       return;
     }
     if (activeTool === 'distance') {
-      if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
-      else setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+      const tapThreshold = DOUBLE_TAP_PX / transform.scale;
+      if (!drawState.isDrawing) {
+        setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+        lastTapRef.current = { time: Date.now(), point: vpt };
+      } else if (distanceMode === 'line' && drawState.points.length === 1) {
+        // Line mode: add second point; user can drag to adjust, finalize on touchend
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        lastTapRef.current = { time: Date.now(), point: vpt };
+        adjustingLastPointRef.current = true;
+      } else if (distanceMode === 'polyline' && drawState.points.length >= 2) {
+        const last = lastTapRef.current;
+        if (last && (Date.now() - last.time) < DOUBLE_TAP_MS && Math.hypot(vpt.x - last.point.x, vpt.y - last.point.y) < tapThreshold) {
+          finalizeMeasurement('distance', drawState.points);
+          setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+          lastTapRef.current = null;
+          return;
+        }
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        lastTapRef.current = { time: Date.now(), point: vpt };
+      } else {
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        lastTapRef.current = { time: Date.now(), point: vpt };
+      }
       adjustingLastPointRef.current = true;
       return;
     }
     if (activeTool === 'area') {
-      if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
-      else setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+      const tapThreshold = DOUBLE_TAP_PX / transform.scale;
+      if (!drawState.isDrawing) {
+        setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+        lastTapRef.current = { time: Date.now(), point: vpt };
+      } else if (drawState.points.length >= 3) {
+        const last = lastTapRef.current;
+        if (last && (Date.now() - last.time) < DOUBLE_TAP_MS && Math.hypot(vpt.x - last.point.x, vpt.y - last.point.y) < tapThreshold) {
+          finalizeMeasurement('area', drawState.points);
+          setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+          lastTapRef.current = null;
+          return;
+        }
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        lastTapRef.current = { time: Date.now(), point: vpt };
+      } else {
+        setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+        lastTapRef.current = { time: Date.now(), point: vpt };
+      }
       adjustingLastPointRef.current = true;
       return;
     }
@@ -822,7 +877,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     isPanRef.current = true;
     panStartRef.current = { x: screenPt.x, y: screenPt.y, ox: transform.offsetX, oy: transform.offsetY };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, cropState, drawState, transform, canvasToVirtual, hitTestItems]);
+  }, [activeTool, distanceMode, cropState, drawState, transform, canvasToVirtual, hitTestItems]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     // Pinch zoom
@@ -926,9 +981,13 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         onCalibrationDrawn({ type: 'line', pixelLength: calculatePixelDistance(drawStateRef.current.calibrationPoints) });
         setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
       }
+      if (activeTool === 'distance' && distanceMode === 'line' && drawStateRef.current.points.length === 2) {
+        finalizeMeasurement('distance', drawStateRef.current.points);
+        setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, calibrationMode, cropState, draggedItem, canvasItems, onItemsChange, onCalibrationDrawn]);
+  }, [activeTool, calibrationMode, distanceMode, cropState, draggedItem, canvasItems, onItemsChange, onCalibrationDrawn]);
 
   // ── Register touch handlers with { passive: false } ───────────────────────────
   // React registers JSX touch handlers as passive by default (breaks preventDefault).
@@ -1178,13 +1237,29 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         </div>
       )}
 
-      {/* Drawing instructions */}
+      {/* Drawing instructions + Finalizar button (for polyline/area on mobile) */}
       {drawState.isDrawing && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/75 text-white text-xs rounded-xl px-4 py-2 pointer-events-none backdrop-blur-sm">
-          {activeTool === 'distance' && <>Clic para añadir punto · <strong>Doble clic</strong> o <strong>Enter</strong> para finalizar · Esc para cancelar</>}
-          {activeTool === 'area' && <>Clic para añadir vértice · <strong>Doble clic</strong> o <strong>Enter</strong> para cerrar · Esc para cancelar</>}
-          {activeTool === 'calibrate' && calibrationMode === 'line' && drawState.calibrationPoints.length === 1 && <>Clic en el segundo punto de referencia</>}
-          {activeTool === 'calibrate' && calibrationMode === 'area' && drawState.points.length > 0 && <>Clic para añadir vértice · Clic en el primer punto o <strong>Enter</strong> para cerrar · Esc para cancelar</>}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/75 text-white text-xs rounded-xl pl-4 pr-2 py-2 backdrop-blur-sm">
+          <span className="pointer-events-none">
+            {activeTool === 'distance' && distanceMode === 'line' && <>Clic en el segundo punto (un segmento)</>}
+            {activeTool === 'distance' && distanceMode === 'polyline' && <>Clic para añadir punto · doble clic o botón para finalizar</>}
+            {activeTool === 'area' && <>Clic para añadir vértice · doble clic o botón para cerrar</>}
+            {activeTool === 'calibrate' && calibrationMode === 'line' && drawState.calibrationPoints.length === 1 && <>Clic en el segundo punto de referencia</>}
+            {activeTool === 'calibrate' && calibrationMode === 'area' && drawState.points.length > 0 && <>Clic para añadir vértice · Clic en el primer punto o Enter para cerrar</>}
+          </span>
+          {((activeTool === 'distance' && distanceMode === 'polyline' && drawState.points.length >= 2) || (activeTool === 'area' && drawState.points.length >= 3)) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (activeTool === 'distance') finalizeMeasurement('distance', drawState.points);
+                else finalizeMeasurement('area', drawState.points);
+                setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+              }}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 font-semibold transition-colors"
+            >
+              Finalizar
+            </button>
+          )}
         </div>
       )}
 

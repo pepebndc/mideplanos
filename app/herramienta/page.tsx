@@ -10,7 +10,7 @@ import { saveProject, listProjects, readFileAsDataURL } from '@/utils/storage';
 import FileUpload from '@/components/FileUpload';
 import Header from '@/components/Header';
 import Toolbar from '@/components/Toolbar';
-import MeasurementCanvas, { MeasurementCanvasRef } from '@/components/MeasurementCanvas';
+import MeasurementCanvas, { MeasurementCanvasRef, type DistanceMode } from '@/components/MeasurementCanvas';
 import MeasurementsList from '@/components/MeasurementsList';
 import ImageLayersPanel from '@/components/ImageLayersPanel';
 import CalibrationDialog from '@/components/CalibrationDialog';
@@ -32,6 +32,7 @@ export default function Home() {
   const [calibration, setCalibration] = useState<CalibrationData | null>(null);
   const [pendingCalibration, setPendingCalibration] = useState<PendingCalibration | null>(null);
   const [calibrationMode, setCalibrationMode] = useState<'line' | 'area'>('line');
+  const [distanceMode, setDistanceMode] = useState<DistanceMode>('line');
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Mobile panel state ──────────────────────────────────────────────────────
@@ -451,6 +452,8 @@ export default function Home() {
             hasCalibration={!!calibration}
             calibrationMode={calibrationMode}
             onCalibrationModeChange={setCalibrationMode}
+            distanceMode={distanceMode}
+            onDistanceModeChange={setDistanceMode}
             variant="vertical"
           />
         </div>
@@ -463,6 +466,7 @@ export default function Home() {
             activeTool={activeTool}
             calibration={calibration}
             calibrationMode={calibrationMode}
+            distanceMode={distanceMode}
             measurements={measurements}
             selectedMeasurementId={selectedMeasurementId}
             selectedItemId={selectedItemId}
@@ -588,6 +592,8 @@ export default function Home() {
             hasCalibration={!!calibration}
             calibrationMode={calibrationMode}
             onCalibrationModeChange={setCalibrationMode}
+            distanceMode={distanceMode}
+            onDistanceModeChange={setDistanceMode}
             variant="horizontal"
           />
         </div>
