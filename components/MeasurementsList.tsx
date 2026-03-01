@@ -233,6 +233,7 @@ export default function MeasurementsList({
                                 <button
                                   key={c}
                                   title={c}
+                                  onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => onRecolorMeasurement(m.id, c)}
                                   className="w-4 h-4 transition-transform hover:scale-125"
                                   style={{
