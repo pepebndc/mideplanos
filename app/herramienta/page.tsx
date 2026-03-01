@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Layers } from 'lucide-react';
+import { Layers } from 'lucide-react';
 import { Tool, Measurement, CalibrationData, CanvasItem, Project, SaveStatus } from '@/types';
 import { renderPdfPageToDataUrl } from '@/utils/pdfUtils';
 import { pixelsToReal, pixelAreaToReal, generateId } from '@/utils/measurements';
@@ -48,6 +48,30 @@ export default function Home() {
   const canvasRef = useRef<MeasurementCanvasRef>(null);
   const pdfRefs = useRef<Map<string, PdfRef>>(new Map());
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
+  const panelDragStartY = useRef<number | null>(null);
+
+  const handlePanelDragStart = useCallback((e: React.TouchEvent) => {
+    panelDragStartY.current = e.touches[0].clientY;
+    if (mobilePanelRef.current) mobilePanelRef.current.style.transition = 'none';
+  }, []);
+
+  const handlePanelDragMove = useCallback((e: React.TouchEvent) => {
+    if (panelDragStartY.current === null) return;
+    const dy = Math.max(0, e.touches[0].clientY - panelDragStartY.current);
+    if (mobilePanelRef.current) mobilePanelRef.current.style.transform = `translateY(${dy}px)`;
+  }, []);
+
+  const handlePanelDragEnd = useCallback((e: React.TouchEvent) => {
+    if (panelDragStartY.current === null) return;
+    const dy = Math.max(0, e.changedTouches[0].clientY - panelDragStartY.current);
+    panelDragStartY.current = null;
+    if (mobilePanelRef.current) {
+      mobilePanelRef.current.style.transition = 'transform 300ms ease-out';
+      mobilePanelRef.current.style.transform = '';
+      if (dy > 80) setShowMobilePanel(false);
+    }
+  }, []);
   // Always-fresh ref so setTimeout callbacks never see stale closure values
   const liveRef = useRef({ canvasItems, measurements, calibration, currentProjectId, currentProjectName });
   liveRef.current = { canvasItems, measurements, calibration, currentProjectId, currentProjectName };
@@ -133,7 +157,7 @@ export default function Home() {
     if (canvasItems.length === 0) return;
     setSaveStatus('unsaved');
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(executeSave, 2000);
+    autoSaveTimer.current = setTimeout(executeSave, 300);
     return () => clearTimeout(autoSaveTimer.current);
   }, [canvasItems, measurements, calibration, executeSave]);
 
@@ -277,6 +301,10 @@ export default function Home() {
     if (selectedItemId === id) setSelectedItemId(null);
   }, [selectedItemId, pushToHistory]);
 
+  const handleRenameItem = useCallback((id: string, name: string) => {
+    setCanvasItems((prev) => prev.map((i) => i.id === id ? { ...i, name } : i));
+  }, []);
+
   const handleReorderItem = useCallback((id: string, direction: 'up' | 'down') => {
     pushToHistory();
     setCanvasItems((prev) => {
@@ -394,6 +422,7 @@ export default function Home() {
         onAddFile={handleAddFile}
         onSave={handleSave}
         onOpenProjects={() => setShowProjectsModal(true)}
+        onRenameProject={(name) => { setCurrentProjectName(name); liveRef.current = { ...liveRef.current, currentProjectName: name }; }}
         onPageChange={handlePageChange}
         onLogoClick={() => {
           if (canvasItems.length > 0) {
@@ -444,6 +473,7 @@ export default function Home() {
             onReorderItem={handleReorderItem}
             onResetCrop={handleResetCrop}
             onActivateCrop={handleActivateCrop}
+            onRenameItem={handleRenameItem}
           />
           <MeasurementsList
             measurements={measurements}
@@ -469,29 +499,27 @@ export default function Home() {
 
         {/* Mobile panel — bottom sheet */}
         <div
+          ref={mobilePanelRef}
           className={`md:hidden absolute inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${showMobilePanel ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
           style={{ maxHeight: '65vh', backgroundColor: '#F1EFEA' }}
         >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-2 pb-1 shrink-0">
+          {/* Drag handle — touch to dismiss */}
+          <div
+            className="flex justify-center items-center py-3 shrink-0 cursor-grab active:cursor-grabbing touch-none"
+            onTouchStart={handlePanelDragStart}
+            onTouchMove={handlePanelDragMove}
+            onTouchEnd={handlePanelDragEnd}
+          >
             <div className="w-10 h-1 rounded-full" style={{ backgroundColor: '#C8C4BB' }} />
           </div>
           {/* Sheet header */}
           <div
-            className="flex items-center justify-between px-4 py-2 shrink-0"
+            className="flex items-center px-4 py-2 shrink-0"
             style={{ borderBottom: '1px solid #C8C4BB' }}
           >
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9A9590' }}>
               Capas y Medidas
             </span>
-            <button
-              onClick={() => setShowMobilePanel(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-full transition-colors"
-              style={{ backgroundColor: 'rgba(26,44,61,0.06)', color: '#7A8A99' }}
-              aria-label="Cerrar panel"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
           {/* Sheet content */}
           <div className="flex-1 overflow-y-auto">
@@ -513,6 +541,15 @@ export default function Home() {
               onRenameMeasurement={handleRenameMeasurement}
               onRecolorMeasurement={handleRecolorMeasurement}
             />
+          </div>
+          {/* Footer: calibration status + attribution */}
+          <div className="shrink-0 px-4 py-3 flex flex-col gap-1.5" style={{ borderTop: '1px solid #C8C4BB', backgroundColor: '#F1EFEA' }}>
+            <p className="text-[10px] font-medium" style={{ color: calibration ? '#1A2C3D' : '#9A9590' }}>
+              {calibration
+                ? `✓ Calibrado · ${calibration.pixelsPerUnit.toFixed(1)} px/${calibration.unit}`
+                : '— Sin calibración · medidas en píxeles'}
+            </p>
+            <Attribution />
           </div>
         </div>
       </div>

@@ -14,6 +14,7 @@ interface HeaderProps {
   onAddFile: (file: File) => void;
   onSave: () => void;
   onOpenProjects: () => void;
+  onRenameProject: (name: string) => void;
   onPageChange?: (itemId: string, page: number) => void;
   onLogoClick?: () => void;
 }
@@ -28,13 +29,29 @@ export default function Header({
   onAddFile,
   onSave,
   onOpenProjects,
+  onRenameProject,
   onPageChange,
   onLogoClick,
 }: HeaderProps) {
   const addInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
   // Track previous status to trigger the pop animation on transition
   const [animate, setAnimate] = useState(false);
   const prevStatus = useRef<SaveStatus>(saveStatus);
+
+  const startEditName = () => {
+    setEditNameValue(projectName);
+    setIsEditingName(true);
+    setTimeout(() => { nameInputRef.current?.select(); }, 0);
+  };
+
+  const commitEditName = () => {
+    const trimmed = editNameValue.trim();
+    if (trimmed && trimmed !== projectName) onRenameProject(trimmed);
+    setIsEditingName(false);
+  };
 
   useEffect(() => {
     if (prevStatus.current !== saveStatus) {
@@ -51,8 +68,7 @@ export default function Header({
   };
 
   const isSaved = saveStatus === 'saved' || saveStatus === 'idle';
-  const isSaving = saveStatus === 'saving';
-  const isUnsaved = saveStatus === 'unsaved';
+  const isSaving = saveStatus === 'saving' || saveStatus === 'unsaved';
 
   return (
     <header className="h-12 bg-white border-b border-gray-100 flex items-center px-3 gap-2 sm:px-4 sm:gap-3 shadow-sm z-10 shrink-0">
@@ -80,20 +96,40 @@ export default function Header({
       {/* Project name + save-status pill */}
       {canvasItems.length > 0 && (
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[200px]" style={{ color: '#1A2C3D' }}>
-            {projectName}
-          </span>
+          {isEditingName ? (
+            <input
+              ref={nameInputRef}
+              value={editNameValue}
+              onChange={(e) => setEditNameValue(e.target.value)}
+              onBlur={commitEditName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.currentTarget.blur(); }
+                if (e.key === 'Escape') { setIsEditingName(false); }
+              }}
+              className="text-sm font-medium bg-transparent border-b outline-none max-w-[120px] sm:max-w-[220px]"
+              style={{ color: '#1A2C3D', borderColor: '#1A2C3D' }}
+              autoFocus
+            />
+          ) : (
+            <button
+              onClick={startEditName}
+              title="Renombrar proyecto"
+              className="text-sm font-medium truncate max-w-[100px] sm:max-w-[200px] hover:underline underline-offset-2 decoration-dashed text-left"
+              style={{ color: '#1A2C3D' }}
+            >
+              {projectName}
+            </button>
+          )}
           <span
             className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0 transition-all duration-200 ${animate ? 'scale-110' : 'scale-100'}`}
             style={{
-              color: isSaving ? '#1A2C3D' : isSaved ? '#9A9590' : '#8B6914',
-              backgroundColor: isSaving ? 'rgba(26,44,61,0.07)' : isSaved ? 'rgba(26,44,61,0.04)' : 'rgba(180,140,40,0.1)',
+              color: isSaving ? '#1A2C3D' : '#9A9590',
+              backgroundColor: isSaving ? 'rgba(26,44,61,0.07)' : 'rgba(26,44,61,0.04)',
             }}
           >
             {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
             {isSaved && <Save className="w-3 h-3" />}
-            {isUnsaved && <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#B87F14' }} />}
-            <span className="hidden sm:inline">{isSaving ? 'Guardando…' : isSaved ? 'Guardado' : 'Sin guardar'}</span>
+            <span className="hidden sm:inline">{isSaving ? 'Guardando…' : 'Guardado'}</span>
           </span>
         </div>
       )}
