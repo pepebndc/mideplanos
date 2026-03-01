@@ -7,7 +7,6 @@ interface ToolbarProps {
   activeTool: Tool;
   onToolChange: (tool: Tool) => void;
   hasCalibration: boolean;
-  onRecalibrate: () => void;
   variant?: 'vertical' | 'horizontal';
 }
 
@@ -21,7 +20,7 @@ const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string;
   { id: 'delete', icon: <Trash2 className="w-5 h-5" />, label: 'Eliminar medida', shortcut: 'Del', activeClass: 'bg-red-100 text-red-500' },
 ];
 
-export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRecalibrate, variant = 'vertical' }: ToolbarProps) {
+export default function Toolbar({ activeTool, onToolChange, hasCalibration, variant = 'vertical' }: ToolbarProps) {
   const isHorizontal = variant === 'horizontal';
   const btnSize = isHorizontal ? 'w-10 h-10' : 'w-11 h-11';
   const tooltipPos = isHorizontal
@@ -32,43 +31,33 @@ export default function Toolbar({ activeTool, onToolChange, hasCalibration, onRe
     <div className={`flex items-center gap-1 select-none ${isHorizontal ? 'flex-row px-2 py-1' : 'flex-col py-3 px-2 bg-white border-r border-gray-100 shadow-sm'}`}>
       {TOOLS.map((tool) => {
         const isActive = activeTool === tool.id;
+        const isCalibrate = tool.id === 'calibrate';
+        const label = isCalibrate && hasCalibration ? 'Recalibrar escala' : tool.label;
+
         return (
           <button
             key={tool.id}
             onClick={() => onToolChange(tool.id)}
-            title={`${tool.label} (${tool.shortcut})`}
+            title={`${label} (${tool.shortcut})`}
             className={`
               relative group ${btnSize} rounded-xl flex items-center justify-center transition-all duration-150 shrink-0
               ${isActive ? tool.activeClass + ' shadow-sm' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}
             `}
           >
             {tool.icon}
+
+            {/* Calibration-active indicator dot */}
+            {isCalibrate && hasCalibration && !isActive && (
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+            )}
+
             <span className={`absolute ${tooltipPos} bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg`}>
-              {tool.label}
+              {label}
               <span className="ml-1.5 text-gray-400 text-[10px]">{tool.shortcut}</span>
             </span>
           </button>
         );
       })}
-
-      {hasCalibration && (
-        <>
-          <div className={isHorizontal ? 'w-px h-6 bg-gray-100 mx-1' : 'w-full h-px bg-gray-100 my-1'} />
-          <button
-            onClick={onRecalibrate}
-            title="Recalibrar escala"
-            className={`relative group ${btnSize} rounded-xl flex items-center justify-center text-amber-400 hover:bg-amber-50 transition-colors shrink-0`}
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span className={`absolute ${tooltipPos} bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg`}>
-              Recalibrar
-            </span>
-          </button>
-        </>
-      )}
     </div>
   );
 }

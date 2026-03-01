@@ -440,7 +440,6 @@ export default function Home() {
             activeTool={activeTool}
             onToolChange={setActiveTool}
             hasCalibration={!!calibration}
-            onRecalibrate={() => setActiveTool('calibrate')}
             variant="vertical"
           />
         </div>
@@ -575,7 +574,6 @@ export default function Home() {
             activeTool={activeTool}
             onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}
             hasCalibration={!!calibration}
-            onRecalibrate={() => { setActiveTool('calibrate'); setShowMobilePanel(false); }}
             variant="horizontal"
           />
         </div>
