@@ -29,16 +29,23 @@ export default function MeasurementsList({
 }: MeasurementsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const editValueRef = useRef('');
   const cancellingRef = useRef(false);
+
+  // Keep ref in sync so confirmEdit (e.g. from blur) always reads the latest value
+  editValueRef.current = editValue;
 
   const startEdit = (m: Measurement) => {
     setEditingId(m.id);
     setEditValue(m.label);
+    editValueRef.current = m.label;
+    cancellingRef.current = false;
   };
 
   const confirmEdit = (id: string) => {
     if (cancellingRef.current) { cancellingRef.current = false; return; }
-    if (editValue.trim()) onRenameMeasurement(id, editValue.trim());
+    const value = editValueRef.current.trim();
+    if (value) onRenameMeasurement(id, value);
     setEditingId(null);
   };
 
@@ -203,7 +210,11 @@ export default function MeasurementsList({
                                   color: '#1A2C3D',
                                 }}
                                 value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setEditValue(v);
+                                  editValueRef.current = v;
+                                }}
                                 onBlur={() => confirmEdit(m.id)}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') e.currentTarget.blur();
@@ -212,6 +223,7 @@ export default function MeasurementsList({
                                 autoFocus
                               />
                               <button
+                                type="button"
                                 onClick={() => confirmEdit(m.id)}
                                 className="transition-colors"
                                 style={{ color: '#9A9590' }}
@@ -221,7 +233,8 @@ export default function MeasurementsList({
                                 <Check className="w-3 h-3" />
                               </button>
                               <button
-                                onClick={() => setEditingId(null)}
+                                type="button"
+                                onClick={() => { cancellingRef.current = true; setEditingId(null); }}
                                 className="transition-colors"
                                 style={{ color: '#B5B0A3' }}
                                 onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}

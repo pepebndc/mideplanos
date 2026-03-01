@@ -375,8 +375,9 @@ export default function Home() {
   }, [pushToHistory]);
 
   const handleRenameMeasurement = useCallback((id: string, label: string) => {
+    pushToHistory();
     setMeasurements((prev) => prev.map((m) => (m.id === id ? { ...m, label } : m)));
-  }, []);
+  }, [pushToHistory]);
 
   const handleRecolorMeasurement = useCallback((id: string, color: string) => {
     setMeasurements((prev) => prev.map((m) => (m.id === id ? { ...m, color } : m)));
