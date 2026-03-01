@@ -26,7 +26,7 @@ export default function Home() {
   // ── Canvas state ────────────────────────────────────────────────────────────
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [activeTool, setActiveTool] = useState<Tool>('select');
+  const [activeTool, setActiveTool] = useState<Tool>('pan');
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [calibration, setCalibration] = useState<CalibrationData | null>(null);

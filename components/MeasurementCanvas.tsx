@@ -391,7 +391,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const getTouchPos = (touch: React.Touch): Point => {
+  const getTouchPos = (touch: Touch): Point => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
   };
@@ -545,10 +545,11 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // Canvas pan
     if (isPanRef.current && panStartRef.current) {
+      const { ox, oy, x, y } = panStartRef.current;
       setTransform((prev) => ({
         ...prev,
-        offsetX: panStartRef.current!.ox + screenPt.x - panStartRef.current!.x,
-        offsetY: panStartRef.current!.oy + screenPt.y - panStartRef.current!.y,
+        offsetX: ox + screenPt.x - x,
+        offsetY: oy + screenPt.y - y,
       }));
       return;
     }
@@ -678,7 +679,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
   // ── Touch events ─────────────────────────────────────────────────────────────
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: TouchEvent) => {
     // Pinch zoom — 2 fingers
     if (e.touches.length === 2) {
       const t1 = e.touches[0], t2 = e.touches[1];
@@ -758,7 +759,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool, cropState, drawState, transform, canvasToVirtual, hitTestItems]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
     // Pinch zoom
     if (e.touches.length === 2 && pinchRef.current) {
       e.preventDefault();
@@ -782,10 +783,11 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     setMousePos(vpt);
 
     if (isPanRef.current && panStartRef.current) {
+      const { ox, oy, x, y } = panStartRef.current;
       setTransform((prev) => ({
         ...prev,
-        offsetX: panStartRef.current!.ox + screenPt.x - panStartRef.current!.x,
-        offsetY: panStartRef.current!.oy + screenPt.y - panStartRef.current!.y,
+        offsetX: ox + screenPt.x - x,
+        offsetY: oy + screenPt.y - y,
       }));
       return;
     }
@@ -833,7 +835,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool, cropState, transform, canvasToVirtual]);
 
-  const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
+  const handleTouchEnd = useCallback((_e: TouchEvent) => {
     pinchRef.current = null;
 
     if (isPanRef.current) {
@@ -862,6 +864,21 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool, cropState, draggedItem, canvasItems, onItemsChange, onCalibrationDrawn]);
+
+  // ── Register touch handlers with { passive: false } ───────────────────────────
+  // React registers JSX touch handlers as passive by default (breaks preventDefault).
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   // ── Apply / cancel crop ──────────────────────────────────────────────────────
 
@@ -1054,9 +1071,6 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       />
 
       {/* Crop confirm bar */}
