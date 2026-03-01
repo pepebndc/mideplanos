@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { Measurement, CalibrationData } from '@/types';
 import { formatLength, formatArea } from '@/utils/measurements';
-import { Ruler, Square, Trash2, Edit2, Check, X, Download } from 'lucide-react';
+import { Ruler, Square, Trash2, Edit2, Check, X, Download, Eye, EyeOff } from 'lucide-react';
 import { MEASUREMENT_COLORS } from '@/utils/measurements';
 
 interface MeasurementsListProps {
@@ -14,6 +14,7 @@ interface MeasurementsListProps {
   onDeleteMeasurement: (id: string) => void;
   onRenameMeasurement: (id: string, label: string) => void;
   onRecolorMeasurement: (id: string, color: string) => void;
+  onToggleVisibility?: (id: string) => void;
 }
 
 export default function MeasurementsList({
@@ -24,6 +25,7 @@ export default function MeasurementsList({
   onDeleteMeasurement,
   onRenameMeasurement,
   onRecolorMeasurement,
+  onToggleVisibility,
 }: MeasurementsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -158,6 +160,7 @@ export default function MeasurementsList({
                     borderLeft: isSelected ? '2px solid #1A2C3D' : '2px solid transparent',
                     backgroundColor: isSelected ? 'rgba(26,44,61,0.06)' : 'transparent',
                     borderBottom: '1px solid #E4E2DC',
+                    opacity: m.visible === false ? 0.6 : 1,
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(26,44,61,0.03)';
@@ -283,6 +286,25 @@ export default function MeasurementsList({
                     {/* Actions */}
                     {!isEditing && (
                       <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        {onToggleVisibility && (
+                          <button
+                            onClick={() => onToggleVisibility(m.id)}
+                            title={m.visible === false ? 'Mostrar en plano' : 'Ocultar en plano'}
+                            className="w-6 h-6 flex items-center justify-center transition-colors"
+                            style={{
+                              color: m.visible === false ? '#9A9590' : '#B5B0A3',
+                              borderRadius: '2px',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = '#1A2C3D')}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = m.visible === false ? '#9A9590' : '#B5B0A3')}
+                          >
+                            {m.visible === false ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => startEdit(m)}
                           title="Renombrar"

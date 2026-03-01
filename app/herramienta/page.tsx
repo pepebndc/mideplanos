@@ -382,6 +382,13 @@ export default function Home() {
     setMeasurements((prev) => prev.map((m) => (m.id === id ? { ...m, color } : m)));
   }, []);
 
+  const handleToggleVisibility = useCallback((id: string) => {
+    pushToHistory();
+    setMeasurements((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, visible: m.visible === false ? true : false } : m))
+    );
+  }, [pushToHistory]);
+
   const handleNewProject = useCallback(() => {
     historyRef.current = [];
     setShowProjectsModal(false);
@@ -500,6 +507,7 @@ export default function Home() {
               onDeleteMeasurement={handleDeleteMeasurement}
               onRenameMeasurement={handleRenameMeasurement}
               onRecolorMeasurement={handleRecolorMeasurement}
+              onToggleVisibility={handleToggleVisibility}
             />
           </div>
           {/* Pinned footer: calibration status + credits */}
@@ -565,6 +573,7 @@ export default function Home() {
               onDeleteMeasurement={handleDeleteMeasurement}
               onRenameMeasurement={handleRenameMeasurement}
               onRecolorMeasurement={handleRecolorMeasurement}
+              onToggleVisibility={handleToggleVisibility}
             />
           </div>
           {/* Footer: calibration status + attribution */}
@@ -579,13 +588,13 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Mobile bottom toolbar — visible only on mobile */}
+      {/* Mobile bottom toolbar — visible only on mobile, compact height; align to bottom so Layers icon doesn't move when mode row appears */}
       <div
-        className="md:hidden flex items-center border-t border-gray-100 shrink-0"
-        style={{ backgroundColor: 'white' }}
+        className="md:hidden flex items-end border-t border-gray-100 shrink-0 py-1"
+        style={{ backgroundColor: 'white', maxHeight: '72px' }}
       >
         {/* Tool strip — sized to always fit without scrolling */}
-        <div className="flex-1 min-w-0 flex">
+        <div className="flex-1 min-w-0 flex min-h-0">
           <Toolbar
             activeTool={activeTool}
             onToolChange={(tool) => { setActiveTool(tool); setShowMobilePanel(false); }}

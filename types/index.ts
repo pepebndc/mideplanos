@@ -54,6 +54,8 @@ export interface DistanceMeasurement {
   unit: Unit | null;
   label: string;
   color: string;
+  /** If false, hidden from canvas (eye-off). Omitted/true = visible. */
+  visible?: boolean;
 }
 
 export interface AreaMeasurement {
@@ -65,6 +67,8 @@ export interface AreaMeasurement {
   unit: Unit | null;
   label: string;
   color: string;
+  /** If false, hidden from canvas (eye-off). Omitted/true = visible. */
+  visible?: boolean;
 }
 
 export type Measurement = DistanceMeasurement | AreaMeasurement;
