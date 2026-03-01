@@ -11,8 +11,8 @@ interface ToolbarProps {
 }
 
 const TOOLS: { id: Tool; icon: React.ReactNode; label: string; shortcut: string; activeClass: string }[] = [
-  { id: 'select', icon: <MousePointer2 className="w-5 h-5" />, label: 'Seleccionar / Mover', shortcut: 'S', activeClass: 'bg-gray-100 text-gray-700' },
   { id: 'pan', icon: <Hand className="w-5 h-5" />, label: 'Mover vista', shortcut: 'H', activeClass: 'bg-sky-100 text-sky-600' },
+  { id: 'select', icon: <MousePointer2 className="w-5 h-5" />, label: 'Seleccionar / Mover', shortcut: 'S', activeClass: 'bg-gray-100 text-gray-700' },
   { id: 'calibrate', icon: <Crosshair className="w-5 h-5" />, label: 'Calibrar escala', shortcut: 'C', activeClass: 'bg-amber-100 text-amber-600' },
   { id: 'distance', icon: <Ruler className="w-5 h-5" />, label: 'Medir distancia', shortcut: 'D', activeClass: 'bg-blue-100 text-blue-600' },
   { id: 'area', icon: <Square className="w-5 h-5" />, label: 'Medir área', shortcut: 'A', activeClass: 'bg-green-100 text-green-600' },

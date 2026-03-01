@@ -189,7 +189,7 @@ export default function Home() {
     setSaveStatus('saved');
     setSelectedItemId(null);
     setSelectedMeasurementId(null);
-    setActiveTool('select');
+    setActiveTool('pan');
     pdfRefs.current.clear(); // PDF refs are lost on load (we store rendered frames)
     setTimeout(() => canvasRef.current?.fitAll(), 80);
   }, []);
@@ -256,7 +256,7 @@ export default function Home() {
             img.src = dataUrl;
           });
         }
-        setActiveTool('select');
+        setActiveTool('pan');
         setTimeout(() => canvasRef.current?.fitAll(), 80);
       } catch (err) {
         alert('Error al cargar el archivo. Comprueba que sea una imagen o PDF válido.');
@@ -341,7 +341,7 @@ export default function Home() {
   // ── Calibration ─────────────────────────────────────────────────────────────
   const handleCalibrationDrawn = useCallback((px: number) => {
     setPendingCalibration(px);
-    setActiveTool('select');
+    setActiveTool('pan');
   }, []);
 
   const handleCalibrationConfirm = useCallback((cal: CalibrationData) => {
