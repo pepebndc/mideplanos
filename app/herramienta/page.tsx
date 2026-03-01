@@ -531,6 +531,7 @@ export default function Home() {
               onReorderItem={handleReorderItem}
               onResetCrop={handleResetCrop}
               onActivateCrop={handleActivateCrop}
+              onRenameItem={handleRenameItem}
             />
             <MeasurementsList
               measurements={measurements}

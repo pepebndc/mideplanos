@@ -1,0 +1,4 @@
+- scroll lateral right menu + keep credits and calibration pegged at the bottom (so only scroll the list of images + saved measures/areas)
+- when editing a measurement/area, enter key should confirm saving, esc cancel
+- on the list of opened images, layout is broken. Keep title and edit button on a line, size and options on the second
+- on mobile view, once the calibration is ON, I can't see the button to show stored measurements

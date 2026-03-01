@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Tool, Point, Rect, Measurement, CalibrationData, CanvasItem } from '@/types';
+import { Tool, Point, Measurement, CalibrationData, CanvasItem } from '@/types';
 import {
   calculatePixelDistance,
   calculatePixelArea,
@@ -22,10 +22,18 @@ interface DrawState {
   calibrationPoints: Point[];
 }
 
+type CropHandle = 'tl' | 'tr' | 'bl' | 'br' | 'l' | 'r' | 't' | 'b';
+
 interface CropState {
   itemId: string;
-  startPt: Point | null;
-  rect: Rect | null;
+  // Crop rect edges in world (virtual canvas) coordinates
+  left: number; top: number; right: number; bottom: number;
+  // Full natural image bounds in world coords (so handles can expand beyond current crop)
+  fullLeft: number; fullTop: number; fullRight: number; fullBottom: number;
+  // Active handle drag
+  activeHandle: CropHandle | null;
+  dragStartPt: Point | null;
+  dragStartEdges: { left: number; top: number; right: number; bottom: number } | null;
 }
 
 export interface MeasurementCanvasRef {
@@ -110,6 +118,8 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     };
   }, []);
 
+  const pinchRef = useRef<{ dist: number; midX: number; midY: number } | null>(null);
+
   const itemDragRef = useRef<{
     itemId: string;
     screenStart: Point;
@@ -121,7 +131,28 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     screenStart: Point;
     origPoints: Point[];
   } | null>(null);
-  const cropDrawingRef = useRef(false);
+  // Track whether the last-placed point is still being held/dragged for fine-tuning
+  const adjustingLastPointRef = useRef(false);
+  // Mirror of drawState kept in sync on every render so event handlers always read fresh values
+  const drawStateRef = useRef(drawState);
+  drawStateRef.current = drawState;
+
+  // ── Crop state initialization ─────────────────────────────────────────────────
+  // Re-initialize whenever the active tool switches to crop or the selected item changes.
+  // Using a ref to read latest canvasItems without adding it to the effect deps
+  // (we don't want to reset the crop rect mid-drag if items re-render).
+  const canvasItemsRef = useRef(canvasItems);
+  canvasItemsRef.current = canvasItems;
+
+  useEffect(() => {
+    if (activeTool === 'crop' && selectedItemId) {
+      const item = canvasItemsRef.current.find((i) => i.id === selectedItemId);
+      if (item) setCropState(initCropState(item));
+    } else if (activeTool !== 'crop') {
+      setCropState(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, selectedItemId]);
 
   // ── Image loading ────────────────────────────────────────────────────────────
 
@@ -259,52 +290,66 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         ctx.restore();
       }
 
-      // Crop overlay
-      if (cropState?.itemId === item.id) {
+      // Crop overlay — handle-based UI
+      if (activeTool === 'crop' && cropState?.itemId === item.id) {
+        const cs = cropState;
         ctx.save();
-        if (cropState.rect && cropState.rect.width > 4 && cropState.rect.height > 4) {
-          const { x: rx, y: ry, width: rw, height: rh } = cropState.rect;
-          // Dimmed area (evenodd hole)
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.beginPath();
-          ctx.rect(ix, iy, dw, dh);
-          ctx.rect(rx, ry, rw, rh);
-          ctx.fill('evenodd');
-          // Crop border
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 1.5 / scale;
-          ctx.setLineDash([6 / scale, 3 / scale]);
-          ctx.strokeRect(rx, ry, rw, rh);
-          ctx.setLineDash([]);
-          // Corner circles
-          [[rx, ry], [rx + rw, ry], [rx, ry + rh], [rx + rw, ry + rh]].forEach(([hx, hy]) => {
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(hx, hy, 4 / scale, 0, Math.PI * 2);
-            ctx.fill();
-          });
-        } else {
-          // Just a hint border (item selected in crop mode)
+
+        // 1. Draw the full image dimmed (reveals pixels outside current crop)
+        ctx.globalAlpha = 0.35;
+        ctx.drawImage(
+          imgEl, 0, 0, item.naturalWidth, item.naturalHeight,
+          cs.fullLeft, cs.fullTop,
+          item.naturalWidth * item.scale, item.naturalHeight * item.scale,
+        );
+        ctx.globalAlpha = 1;
+
+        // 2. Draw the crop region at full opacity (bright window)
+        const srcX = (cs.left - cs.fullLeft) / item.scale;
+        const srcY = (cs.top - cs.fullTop) / item.scale;
+        const srcW = (cs.right - cs.left) / item.scale;
+        const srcH = (cs.bottom - cs.top) / item.scale;
+        ctx.drawImage(imgEl, srcX, srcY, srcW, srcH, cs.left, cs.top, cs.right - cs.left, cs.bottom - cs.top);
+
+        // 3. Dim overlay outside crop (evenodd cutout)
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.beginPath();
+        ctx.rect(cs.fullLeft, cs.fullTop, cs.fullRight - cs.fullLeft, cs.fullBottom - cs.fullTop);
+        ctx.rect(cs.left, cs.top, cs.right - cs.left, cs.bottom - cs.top);
+        ctx.fill('evenodd');
+
+        // 4. Crop border
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 1.5 / scale;
+        ctx.setLineDash([]);
+        ctx.strokeRect(cs.left, cs.top, cs.right - cs.left, cs.bottom - cs.top);
+
+        // 5. Rule-of-thirds grid lines (subtle)
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 0.75 / scale;
+        const cw2 = cs.right - cs.left, ch2 = cs.bottom - cs.top;
+        [1 / 3, 2 / 3].forEach((t) => {
+          ctx.beginPath(); ctx.moveTo(cs.left + cw2 * t, cs.top); ctx.lineTo(cs.left + cw2 * t, cs.bottom); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cs.left, cs.top + ch2 * t); ctx.lineTo(cs.right, cs.top + ch2 * t); ctx.stroke();
+        });
+
+        // 6. Handles — corners + edge midpoints
+        const hs = 7 / scale;
+        const handles: [number, number][] = [
+          [cs.left, cs.top], [cs.right, cs.top], [cs.left, cs.bottom], [cs.right, cs.bottom],
+          [(cs.left + cs.right) / 2, cs.top], [(cs.left + cs.right) / 2, cs.bottom],
+          [cs.left, (cs.top + cs.bottom) / 2], [cs.right, (cs.top + cs.bottom) / 2],
+        ];
+        handles.forEach(([hx, hy]) => {
+          ctx.fillStyle = '#fff';
           ctx.strokeStyle = '#F59E0B';
           ctx.lineWidth = 2 / scale;
-          ctx.setLineDash([8 / scale, 4 / scale]);
-          ctx.strokeRect(ix, iy, dw, dh);
-          ctx.setLineDash([]);
-          // Instruction label
-          const fontSize = 13 / scale;
-          const txt = 'Arrastra para recortar';
-          ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const tw = ctx.measureText(txt).width;
-          const px = 6 / scale, py = 4 / scale;
-          ctx.fillStyle = 'rgba(245,158,11,0.9)';
           ctx.beginPath();
-          ctx.roundRect(ix + dw / 2 - tw / 2 - px, iy + dh / 2 - fontSize / 2 - py, tw + px * 2, fontSize + py * 2, 4 / scale);
+          ctx.rect(hx - hs / 2, hy - hs / 2, hs, hs);
           ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.fillText(txt, ix + dw / 2, iy + dh / 2);
-        }
+          ctx.stroke();
+        });
+
         ctx.restore();
       }
     });
@@ -344,6 +389,11 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   const getScreenPos = (e: React.MouseEvent): Point => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const getTouchPos = (touch: React.Touch): Point => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
   };
 
   // ── Item hit testing ─────────────────────────────────────────────────────────
@@ -428,19 +478,24 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
 
     // ── Crop tool ────────────────────────────────────────────────────────────
     if (activeTool === 'crop') {
+      // First check if clicking a handle on the active crop state
+      if (cropState) {
+        const handle = hitTestCropHandle(vpt, cropState, transform.scale);
+        if (handle) {
+          setCropState((prev) => prev ? {
+            ...prev,
+            activeHandle: handle,
+            dragStartPt: vpt,
+            dragStartEdges: { left: prev.left, top: prev.top, right: prev.right, bottom: prev.bottom },
+          } : null);
+          return;
+        }
+      }
+      // Click on item → select and initialize crop state
       const hit = hitTestItems(vpt);
       if (hit) {
-        const isAlreadySelected = cropState?.itemId === hit.id;
-        if (isAlreadySelected) {
-          // Start drawing crop rect
-          const clamped = clampToItem(vpt, hit);
-          setCropState({ itemId: hit.id, startPt: clamped, rect: null });
-          cropDrawingRef.current = true;
-        } else {
-          // Select item for cropping
-          setCropState({ itemId: hit.id, startPt: null, rect: null });
-          onSelectItem(hit.id);
-        }
+        setCropState(initCropState(hit));
+        onSelectItem(hit.id);
       } else {
         setCropState(null);
         onSelectItem(null);
@@ -453,10 +508,10 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       if (!drawState.isDrawing) {
         setDrawState({ isDrawing: true, points: [], calibrationPoints: [vpt] });
       } else if (drawState.calibrationPoints.length === 1) {
-        const pts = [drawState.calibrationPoints[0], vpt];
-        onCalibrationDrawn(calculatePixelDistance(pts));
-        setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+        // Place second point — finalization happens on mouseup so the user can drag to adjust
+        setDrawState((p) => ({ ...p, calibrationPoints: [p.calibrationPoints[0], vpt] }));
       }
+      adjustingLastPointRef.current = true;
       return;
     }
 
@@ -467,6 +522,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       } else {
         setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
       }
+      adjustingLastPointRef.current = true;
       return;
     }
 
@@ -477,6 +533,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       } else {
         setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
       }
+      adjustingLastPointRef.current = true;
       return;
     }
   };
@@ -517,13 +574,36 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       return;
     }
 
-    // Crop drawing
-    if (cropDrawingRef.current && cropState?.startPt && cropState.itemId) {
-      const item = canvasItems.find((i) => i.id === cropState.itemId);
-      if (item) {
-        const clamped = clampToItem(vpt, item);
-        const rect = normalizeRectPts(cropState.startPt, clamped);
-        setCropState((p) => p ? { ...p, rect } : null);
+    // Crop handle drag
+    if (cropState?.activeHandle && cropState.dragStartPt && cropState.dragStartEdges) {
+      const { activeHandle: h, dragStartPt, dragStartEdges: se, fullLeft, fullTop, fullRight, fullBottom } = cropState;
+      const dx = vpt.x - dragStartPt.x;
+      const dy = vpt.y - dragStartPt.y;
+      const MIN = 20 / transform.scale;
+      let { left, top, right, bottom } = se;
+      if (h === 'tl' || h === 'bl' || h === 'l') left = Math.max(fullLeft, Math.min(se.left + dx, right - MIN));
+      if (h === 'tr' || h === 'br' || h === 'r') right = Math.min(fullRight, Math.max(se.right + dx, left + MIN));
+      if (h === 'tl' || h === 'tr' || h === 't') top = Math.max(fullTop, Math.min(se.top + dy, bottom - MIN));
+      if (h === 'bl' || h === 'br' || h === 'b') bottom = Math.min(fullBottom, Math.max(se.bottom + dy, top + MIN));
+      setCropState((prev) => prev ? { ...prev, left, top, right, bottom } : null);
+    }
+
+    // Point drag-to-adjust: move the last placed point while button is held
+    if (adjustingLastPointRef.current) {
+      if ((activeTool === 'distance' || activeTool === 'area') && drawState.isDrawing) {
+        setDrawState((p) => {
+          if (p.points.length === 0) return p;
+          const pts = [...p.points];
+          pts[pts.length - 1] = vpt;
+          return { ...p, points: pts };
+        });
+      } else if (activeTool === 'calibrate' && drawState.isDrawing) {
+        setDrawState((p) => {
+          const calPts = [...p.calibrationPoints];
+          if (calPts.length === 0) return p;
+          calPts[calPts.length - 1] = vpt;
+          return { ...p, calibrationPoints: calPts };
+        });
       }
     }
   };
@@ -559,9 +639,19 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       measurementDragRef.current = null;
     }
 
-    // End crop drawing
-    if (cropDrawingRef.current) {
-      cropDrawingRef.current = false;
+    // End crop handle drag
+    if (cropState?.activeHandle) {
+      setCropState((prev) => prev ? { ...prev, activeHandle: null, dragStartPt: null, dragStartEdges: null } : null);
+    }
+
+    // Commit the adjusted point position
+    if (adjustingLastPointRef.current) {
+      adjustingLastPointRef.current = false;
+      // For calibrate: if both points are placed, fire calibration now
+      if (activeTool === 'calibrate' && drawStateRef.current.calibrationPoints.length === 2) {
+        onCalibrationDrawn(calculatePixelDistance(drawStateRef.current.calibrationPoints));
+        setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+      }
     }
 
     if (e.button === 1) {
@@ -570,48 +660,227 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
     }
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    const screenPt = getScreenPos(e);
-    const vpt = canvasToVirtual(screenPt.x, screenPt.y);
-
-    if (activeTool === 'distance' && drawState.isDrawing && drawState.points.length >= 2) {
-      finalizeMeasurement('distance', drawState.points);
+  const handleDoubleClick = (_e: React.MouseEvent) => {
+    // The second click of a double-click fires a mousedown which added an extra point.
+    // Use drawStateRef for the freshest value, then remove that extra point.
+    const ds = drawStateRef.current;
+    if (activeTool === 'distance' && ds.isDrawing && ds.points.length >= 2) {
+      const pts = ds.points.slice(0, -1);
+      finalizeMeasurement('distance', pts.length >= 2 ? pts : ds.points);
       return;
     }
-    if (activeTool === 'area' && drawState.isDrawing && drawState.points.length >= 3) {
-      finalizeMeasurement('area', drawState.points);
+    if (activeTool === 'area' && ds.isDrawing && ds.points.length >= 3) {
+      const pts = ds.points.slice(0, -1);
+      finalizeMeasurement('area', pts.length >= 3 ? pts : ds.points);
       return;
-    }
-    // Crop: double click on same item starts drawing (if already selected)
-    if (activeTool === 'crop' && cropState) {
-      const item = canvasItems.find((i) => i.id === cropState.itemId);
-      if (item) {
-        const clamped = clampToItem(vpt, item);
-        setCropState({ itemId: item.id, startPt: clamped, rect: null });
-        cropDrawingRef.current = true;
-      }
     }
   };
+
+  // ── Touch events ─────────────────────────────────────────────────────────────
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Pinch zoom — 2 fingers
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const rect = canvasRef.current!.getBoundingClientRect();
+      pinchRef.current = {
+        dist: Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY),
+        midX: (t1.clientX + t2.clientX) / 2 - rect.left,
+        midY: (t1.clientY + t2.clientY) / 2 - rect.top,
+      };
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+
+    const screenPt = getTouchPos(e.touches[0]);
+    const vpt = canvasToVirtual(screenPt.x, screenPt.y);
+
+    // Crop tool — hit-test handle first, then item
+    if (activeTool === 'crop') {
+      if (cropState) {
+        const handle = hitTestCropHandle(vpt, cropState, transform.scale, 24);
+        if (handle) {
+          setCropState((prev) => prev ? {
+            ...prev,
+            activeHandle: handle,
+            dragStartPt: vpt,
+            dragStartEdges: { left: prev.left, top: prev.top, right: prev.right, bottom: prev.bottom },
+          } : null);
+          return;
+        }
+      }
+      const hit = hitTestItems(vpt);
+      if (hit) { setCropState(initCropState(hit)); onSelectItem(hit.id); }
+      else { setCropState(null); onSelectItem(null); }
+      return;
+    }
+
+    // Select tool — item drag or pan
+    if (activeTool === 'select') {
+      const hit = hitTestItems(vpt);
+      if (hit) {
+        onSelectItem(hit.id);
+        itemDragRef.current = { itemId: hit.id, screenStart: screenPt, origX: hit.x, origY: hit.y };
+      } else {
+        isPanRef.current = true;
+        panStartRef.current = { x: screenPt.x, y: screenPt.y, ox: transform.offsetX, oy: transform.offsetY };
+      }
+      return;
+    }
+
+    // Drawing tools — tap to add a point (same logic as mouse: adjust on hold)
+    if (activeTool === 'calibrate') {
+      if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [], calibrationPoints: [vpt] });
+      else if (drawState.calibrationPoints.length === 1) {
+        // Place second point; finalization happens on touchend so the user can drag to adjust
+        setDrawState((p) => ({ ...p, calibrationPoints: [p.calibrationPoints[0], vpt] }));
+      }
+      adjustingLastPointRef.current = true;
+      return;
+    }
+    if (activeTool === 'distance') {
+      if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+      else setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+      adjustingLastPointRef.current = true;
+      return;
+    }
+    if (activeTool === 'area') {
+      if (!drawState.isDrawing) setDrawState({ isDrawing: true, points: [vpt], calibrationPoints: [] });
+      else setDrawState((p) => ({ ...p, points: [...p.points, vpt] }));
+      adjustingLastPointRef.current = true;
+      return;
+    }
+
+    // Default / pan tool
+    isPanRef.current = true;
+    panStartRef.current = { x: screenPt.x, y: screenPt.y, ox: transform.offsetX, oy: transform.offsetY };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, cropState, drawState, transform, canvasToVirtual, hitTestItems]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // Pinch zoom
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const newDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const factor = newDist / pinchRef.current.dist;
+      const { midX, midY } = pinchRef.current;
+      setTransform((prev) => {
+        const newScale = Math.min(Math.max(prev.scale * factor, 0.01), 30);
+        const ratio = newScale / prev.scale;
+        return { scale: newScale, offsetX: midX - ratio * (midX - prev.offsetX), offsetY: midY - ratio * (midY - prev.offsetY) };
+      });
+      pinchRef.current = { ...pinchRef.current, dist: newDist };
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+
+    const screenPt = getTouchPos(e.touches[0]);
+    const vpt = canvasToVirtual(screenPt.x, screenPt.y);
+    setMousePos(vpt);
+
+    if (isPanRef.current && panStartRef.current) {
+      setTransform((prev) => ({
+        ...prev,
+        offsetX: panStartRef.current!.ox + screenPt.x - panStartRef.current!.x,
+        offsetY: panStartRef.current!.oy + screenPt.y - panStartRef.current!.y,
+      }));
+      return;
+    }
+
+    if (itemDragRef.current) {
+      const { itemId, screenStart, origX, origY } = itemDragRef.current;
+      const dx = (screenPt.x - screenStart.x) / transform.scale;
+      const dy = (screenPt.y - screenStart.y) / transform.scale;
+      setDraggedItem({ id: itemId, x: origX + dx, y: origY + dy });
+      return;
+    }
+
+    if (cropState?.activeHandle && cropState.dragStartPt && cropState.dragStartEdges) {
+      const { activeHandle: h, dragStartPt, dragStartEdges: se, fullLeft, fullTop, fullRight, fullBottom } = cropState;
+      const dx = vpt.x - dragStartPt.x;
+      const dy = vpt.y - dragStartPt.y;
+      const MIN = 20 / transform.scale;
+      let { left, top, right, bottom } = se;
+      if (h === 'tl' || h === 'bl' || h === 'l') left = Math.max(fullLeft, Math.min(se.left + dx, right - MIN));
+      if (h === 'tr' || h === 'br' || h === 'r') right = Math.min(fullRight, Math.max(se.right + dx, left + MIN));
+      if (h === 'tl' || h === 'tr' || h === 't') top = Math.max(fullTop, Math.min(se.top + dy, bottom - MIN));
+      if (h === 'bl' || h === 'br' || h === 'b') bottom = Math.min(fullBottom, Math.max(se.bottom + dy, top + MIN));
+      setCropState((prev) => prev ? { ...prev, left, top, right, bottom } : null);
+      return;
+    }
+
+    // Point drag-to-adjust: slide the last placed point while finger is held down
+    if (adjustingLastPointRef.current) {
+      if ((activeTool === 'distance' || activeTool === 'area') && drawStateRef.current.isDrawing) {
+        setDrawState((p) => {
+          if (p.points.length === 0) return p;
+          const pts = [...p.points];
+          pts[pts.length - 1] = vpt;
+          return { ...p, points: pts };
+        });
+      } else if (activeTool === 'calibrate' && drawStateRef.current.isDrawing) {
+        setDrawState((p) => {
+          const calPts = [...p.calibrationPoints];
+          if (calPts.length === 0) return p;
+          calPts[calPts.length - 1] = vpt;
+          return { ...p, calibrationPoints: calPts };
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, cropState, transform, canvasToVirtual]);
+
+  const handleTouchEnd = useCallback((_e: React.TouchEvent) => {
+    pinchRef.current = null;
+
+    if (isPanRef.current) {
+      isPanRef.current = false;
+      panStartRef.current = null;
+    }
+
+    if (itemDragRef.current && draggedItem) {
+      const { itemId } = itemDragRef.current;
+      onItemsChange(canvasItems.map((item) => item.id === itemId ? { ...item, x: draggedItem.x, y: draggedItem.y } : item));
+      setDraggedItem(null);
+      itemDragRef.current = null;
+    }
+
+    if (cropState?.activeHandle) {
+      setCropState((prev) => prev ? { ...prev, activeHandle: null, dragStartPt: null, dragStartEdges: null } : null);
+    }
+
+    // Commit the adjusted point position (mirror of mouseup logic)
+    if (adjustingLastPointRef.current) {
+      adjustingLastPointRef.current = false;
+      if (activeTool === 'calibrate' && drawStateRef.current.calibrationPoints.length === 2) {
+        onCalibrationDrawn(calculatePixelDistance(drawStateRef.current.calibrationPoints));
+        setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, cropState, draggedItem, canvasItems, onItemsChange, onCalibrationDrawn]);
 
   // ── Apply / cancel crop ──────────────────────────────────────────────────────
 
   const applyCrop = useCallback(() => {
-    if (!cropState?.rect) return;
+    if (!cropState) return;
     const item = canvasItems.find((i) => i.id === cropState.itemId);
     if (!item) return;
-    const { x: rx, y: ry, width: rw, height: rh } = cropState.rect;
-    // Convert from virtual canvas coords → natural image coords
-    const newCropX = item.crop.x + (rx - item.x) / item.scale;
-    const newCropY = item.crop.y + (ry - item.y) / item.scale;
-    const newCropW = rw / item.scale;
-    const newCropH = rh / item.scale;
+    // Convert from world coords → natural image coords
+    const newCropX = (cropState.left - cropState.fullLeft) / item.scale;
+    const newCropY = (cropState.top - cropState.fullTop) / item.scale;
+    const newCropW = (cropState.right - cropState.left) / item.scale;
+    const newCropH = (cropState.bottom - cropState.top) / item.scale;
     onItemsChange(
       canvasItems.map((i) =>
         i.id === item.id
           ? {
               ...i,
-              x: rx,
-              y: ry,
+              x: cropState.left,
+              y: cropState.top,
               crop: {
                 x: Math.max(0, newCropX),
                 y: Math.max(0, newCropY),
@@ -669,7 +938,6 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       if (e.key === 'Escape') {
         setDrawState({ isDrawing: false, points: [], calibrationPoints: [] });
         setCropState(null);
-        cropDrawingRef.current = false;
       }
       if ((e.key === 'Enter') && drawState.isDrawing) {
         if (activeTool === 'distance' && drawState.points.length >= 2)
@@ -677,7 +945,7 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
         else if (activeTool === 'area' && drawState.points.length >= 3)
           finalizeMeasurement('area', drawState.points);
       }
-      if (e.key === 'Enter' && cropState?.rect) {
+      if (e.key === 'Enter' && cropState) {
         applyCrop();
       }
     };
@@ -757,26 +1025,38 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       return 'default';
     }
     if (activeTool === 'delete') return 'not-allowed';
-    if (activeTool === 'crop') return cropDrawingRef.current ? 'crosshair' : 'default';
+    if (activeTool === 'crop') {
+      if (cropState) {
+        const h = hitTestCropHandle(mousePos, cropState, transform.scale);
+        if (h === 'tl' || h === 'br') return 'nwse-resize';
+        if (h === 'tr' || h === 'bl') return 'nesw-resize';
+        if (h === 't' || h === 'b') return 'ns-resize';
+        if (h === 'l' || h === 'r') return 'ew-resize';
+      }
+      return 'crosshair';
+    }
     return 'crosshair';
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  const showCropConfirm = !!(cropState?.rect && cropState.rect.width > 10 && cropState.rect.height > 10);
+  const showCropConfirm = !!cropState;
 
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden">
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
-        style={{ cursor: getCursor() }}
+        style={{ cursor: getCursor(), touchAction: 'none' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
 
       {/* Crop confirm bar */}
@@ -809,9 +1089,9 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       )}
 
       {/* Crop instructions */}
-      {activeTool === 'crop' && cropState && !showCropConfirm && !drawState.isDrawing && (
+      {activeTool === 'crop' && !cropState && !drawState.isDrawing && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/75 text-white text-xs rounded-xl px-4 py-2 pointer-events-none backdrop-blur-sm">
-          {cropState.startPt ? <>Arrastrando recorte…</> : <>Haz clic y arrastra sobre la imagen para definir el recorte</>}
+          Haz clic sobre una imagen para recortarla
         </div>
       )}
 
@@ -959,14 +1239,39 @@ function drawCalibrationLine(ctx: CanvasRenderingContext2D, pts: Point[], mouse:
 function midpoint(a: Point, b: Point): Point { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
 function centroid(pts: Point[]): Point { return { x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length }; }
 
-function clampToItem(pt: Point, item: CanvasItem): Point {
-  const dw = item.crop.width * item.scale;
-  const dh = item.crop.height * item.scale;
-  return { x: Math.max(item.x, Math.min(item.x + dw, pt.x)), y: Math.max(item.y, Math.min(item.y + dh, pt.y)) };
+function initCropState(item: CanvasItem): CropState {
+  const fullLeft = item.x - item.crop.x * item.scale;
+  const fullTop = item.y - item.crop.y * item.scale;
+  return {
+    itemId: item.id,
+    left: item.x,
+    top: item.y,
+    right: item.x + item.crop.width * item.scale,
+    bottom: item.y + item.crop.height * item.scale,
+    fullLeft,
+    fullTop,
+    fullRight: fullLeft + item.naturalWidth * item.scale,
+    fullBottom: fullTop + item.naturalHeight * item.scale,
+    activeHandle: null,
+    dragStartPt: null,
+    dragStartEdges: null,
+  };
 }
 
-function normalizeRectPts(p1: Point, p2: Point): Rect {
-  return { x: Math.min(p1.x, p2.x), y: Math.min(p1.y, p2.y), width: Math.abs(p2.x - p1.x), height: Math.abs(p2.y - p1.y) };
+function hitTestCropHandle(pt: Point, cs: CropState, viewScale: number, hitPx = 12): CropHandle | null {
+  const r = hitPx / viewScale;
+  const mx = (cs.left + cs.right) / 2;
+  const my = (cs.top + cs.bottom) / 2;
+  const candidates: [CropHandle, number, number][] = [
+    ['tl', cs.left, cs.top], ['tr', cs.right, cs.top],
+    ['bl', cs.left, cs.bottom], ['br', cs.right, cs.bottom],
+    ['t', mx, cs.top], ['b', mx, cs.bottom],
+    ['l', cs.left, my], ['r', cs.right, my],
+  ];
+  for (const [key, hx, hy] of candidates) {
+    if (Math.hypot(pt.x - hx, pt.y - hy) < r) return key;
+  }
+  return null;
 }
 
 function distToSegment(p: Point, a: Point, b: Point): number {
