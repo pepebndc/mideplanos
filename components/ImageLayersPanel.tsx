@@ -80,7 +80,7 @@ export default function ImageLayersPanel({
             <li
               key={item.id}
               onClick={() => { if (!isEditing) onSelectItem(isSelected ? null : item.id); }}
-              className="transition-colors flex items-center gap-2 px-3 py-2"
+              className="transition-colors flex items-start gap-2 px-3 py-2"
               style={{
                 cursor: isEditing ? 'default' : 'pointer',
                 borderLeft: isSelected ? '2px solid #1A2C3D' : '2px solid transparent',
@@ -96,7 +96,7 @@ export default function ImageLayersPanel({
             >
               {/* Thumbnail */}
               <div
-                className="w-9 h-9 shrink-0 overflow-hidden"
+                className="w-9 h-9 shrink-0 overflow-hidden mt-0.5"
                 style={{
                   border: '1px solid #C8C4BB',
                   borderRadius: '2px',
@@ -117,72 +117,77 @@ export default function ImageLayersPanel({
                 />
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                {isEditing ? (
-                  <input
-                    className="w-full text-xs font-semibold bg-transparent border-b outline-none"
-                    style={{ color: '#1A2C3D', borderColor: '#1A2C3D' }}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={() => confirmEdit(item.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.currentTarget.blur();
-                      if (e.key === 'Escape') setEditingId(null);
-                    }}
-                    autoFocus
-                  />
-                ) : (
-                  <p
-                    className="text-xs font-semibold truncate hover:underline underline-offset-2 decoration-dashed cursor-text"
-                    style={{ color: '#1A2C3D' }}
-                    onClick={() => startEdit(item)}
-                    title="Haz clic para renombrar"
-                  >
-                    {item.name}
-                  </p>
-                )}
-                <p className="text-[10px] mt-0.5" style={{ color: '#9A9590' }}>
-                  {displayW} × {displayH} px
-                  {cropped && <span style={{ color: '#7A8A99' }}> · recortado</span>}
-                  {item.pdfPage && <span> · pág {item.pdfPage}</span>}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                {isEditing ? (
-                  <>
-                    <PanelButton onClick={() => confirmEdit(item.id)} title="Confirmar nombre">
-                      <Check className="w-3 h-3" />
-                    </PanelButton>
-                    <PanelButton onClick={() => setEditingId(null)} title="Cancelar">
-                      <X className="w-3 h-3" />
-                    </PanelButton>
-                  </>
-                ) : (
-                  <>
+              {/* Two-row content */}
+              <div className="flex-1 min-w-0 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                {/* Row 1: title + edit/confirm/cancel */}
+                <div className="flex items-center gap-1">
+                  {isEditing ? (
+                    <input
+                      className="flex-1 min-w-0 text-xs font-semibold bg-transparent border-b outline-none"
+                      style={{ color: '#1A2C3D', borderColor: '#1A2C3D' }}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => confirmEdit(item.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                        if (e.key === 'Escape') setEditingId(null);
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <p
+                      className="flex-1 min-w-0 text-xs font-semibold truncate hover:underline underline-offset-2 decoration-dashed cursor-text"
+                      style={{ color: '#1A2C3D' }}
+                      onClick={() => startEdit(item)}
+                      title="Haz clic para renombrar"
+                    >
+                      {item.name}
+                    </p>
+                  )}
+                  {isEditing ? (
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <PanelButton onClick={() => confirmEdit(item.id)} title="Confirmar nombre">
+                        <Check className="w-3 h-3" />
+                      </PanelButton>
+                      <PanelButton onClick={() => setEditingId(null)} title="Cancelar">
+                        <X className="w-3 h-3" />
+                      </PanelButton>
+                    </div>
+                  ) : (
                     <PanelButton onClick={() => startEdit(item)} title="Renombrar">
                       <Edit2 className="w-3 h-3" />
                     </PanelButton>
-                    {cropped && (
-                      <PanelButton onClick={() => onResetCrop(item.id)} title="Restablecer recorte">
-                        <RotateCcw className="w-3 h-3" />
+                  )}
+                </div>
+
+                {/* Row 2: size info + action buttons */}
+                {!isEditing && (
+                  <div className="flex items-center gap-1">
+                    <p className="flex-1 min-w-0 text-[10px]" style={{ color: '#9A9590' }}>
+                      {displayW} × {displayH} px
+                      {cropped && <span style={{ color: '#7A8A99' }}> · recortado</span>}
+                      {item.pdfPage && <span> · pág {item.pdfPage}</span>}
+                    </p>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {cropped && (
+                        <PanelButton onClick={() => onResetCrop(item.id)} title="Restablecer recorte">
+                          <RotateCcw className="w-3 h-3" />
+                        </PanelButton>
+                      )}
+                      <PanelButton onClick={() => onActivateCrop(item.id)} title="Recortar">
+                        <Crop className="w-3 h-3" />
                       </PanelButton>
-                    )}
-                    <PanelButton onClick={() => onActivateCrop(item.id)} title="Recortar">
-                      <Crop className="w-3 h-3" />
-                    </PanelButton>
-                    <PanelButton onClick={() => onReorderItem(item.id, 'up')} title="Subir capa" disabled={idx === 0}>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </PanelButton>
-                    <PanelButton onClick={() => onReorderItem(item.id, 'down')} title="Bajar capa" disabled={idx === sorted.length - 1}>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </PanelButton>
-                    <PanelButton onClick={() => onDeleteItem(item.id)} title="Eliminar imagen" danger>
-                      <Trash2 className="w-3 h-3" />
-                    </PanelButton>
-                  </>
+                      <PanelButton onClick={() => onReorderItem(item.id, 'up')} title="Subir capa" disabled={idx === 0}>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </PanelButton>
+                      <PanelButton onClick={() => onReorderItem(item.id, 'down')} title="Bajar capa" disabled={idx === sorted.length - 1}>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </PanelButton>
+                      <PanelButton onClick={() => onDeleteItem(item.id)} title="Eliminar imagen" danger>
+                        <Trash2 className="w-3 h-3" />
+                      </PanelButton>
+                    </div>
+                  </div>
                 )}
               </div>
             </li>
