@@ -998,6 +998,18 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   void resetCrop; // exposed to parent via ref if needed
 
   // ── Mouse wheel zoom ─────────────────────────────────────────────────────────
+  // Native listener so preventDefault() is respected (React's onWheel is often passive).
+  // We only preventDefault so the browser doesn't zoom the page when scrolling here;
+  // we do NOT stopPropagation so the event still reaches React and handleWheel runs (zoom on plan).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, []);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -1129,7 +1141,11 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
   const showCropConfirm = !!cropState;
 
   return (
-    <div ref={containerRef} className="relative w-full h-full overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden"
+      style={{ touchAction: 'none' }}
+    >
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"

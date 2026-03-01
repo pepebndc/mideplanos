@@ -117,6 +117,14 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handler);
   }, [selectedMeasurementId, undo, pushToHistory]);
 
+  // Prevent browser zoom (Ctrl+scroll, trackpad pinch) on the whole interface so only the canvas zoom works on the plan
+  useEffect(() => {
+    if (canvasItems.length === 0) return;
+    const onWheel = (e: WheelEvent) => e.preventDefault();
+    document.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    return () => document.removeEventListener('wheel', onWheel, true);
+  }, [canvasItems.length]);
+
   // ── Core save function (reads from liveRef — never stale) ───────────────────
   const executeSave = useCallback(async () => {
     const { canvasItems: items, measurements: meas, calibration: cal, currentProjectId: pid, currentProjectName: pname } = liveRef.current;
