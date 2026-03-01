@@ -365,14 +365,14 @@ const MeasurementCanvas = forwardRef<MeasurementCanvasRef, Props>(function Measu
       if (activeTool === 'calibrate' && drawState.calibrationPoints.length > 0) {
         drawCalibrationLine(ctx, drawState.calibrationPoints, mousePos, scale);
       } else if (activeTool === 'distance' && drawState.points.length > 0) {
-        drawInProgressLine(ctx, drawState.points, mousePos, scale);
+        drawInProgressLine(ctx, drawState.points, mousePos, scale, calibration);
       } else if (activeTool === 'area' && drawState.points.length > 0) {
-        drawInProgressPolygon(ctx, drawState.points, mousePos, scale);
+        drawInProgressPolygon(ctx, drawState.points, mousePos, scale, calibration);
       }
     }
 
     ctx.restore();
-  }, [transform, drawState, measurements, selectedMeasurementId, selectedItemId, mousePos, activeTool, canvasItems, cropState, draggedItem, draggedMeasurement]);
+  }, [transform, drawState, measurements, selectedMeasurementId, selectedItemId, mousePos, activeTool, canvasItems, cropState, draggedItem, draggedMeasurement, calibration]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -1201,7 +1201,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.fillText(text, x, y);
 }
 
-function drawInProgressLine(ctx: CanvasRenderingContext2D, pts: Point[], mouse: Point, scale: number) {
+function drawInProgressLine(ctx: CanvasRenderingContext2D, pts: Point[], mouse: Point, scale: number, calibration: CalibrationData | null) {
   ctx.save();
   ctx.strokeStyle = '#3B82F6';
   ctx.lineWidth = 2 / scale;
@@ -1212,10 +1212,16 @@ function drawInProgressLine(ctx: CanvasRenderingContext2D, pts: Point[], mouse: 
   ctx.lineTo(mouse.x, mouse.y);
   ctx.stroke();
   pts.forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 4 / scale, 0, Math.PI * 2); ctx.fillStyle = '#3B82F6'; ctx.fill(); });
+  // Live distance label near the cursor
+  const pxDist = calculatePixelDistance([...pts, mouse]);
+  const label = calibration ? formatLength(pixelsToReal(pxDist, calibration), calibration.unit) : `${pxDist.toFixed(0)} px`;
+  const lastPt = pts[pts.length - 1];
+  const mid = midpoint(lastPt, mouse);
+  drawLabel(ctx, label, mid.x, mid.y, '#3B82F6', scale);
   ctx.restore();
 }
 
-function drawInProgressPolygon(ctx: CanvasRenderingContext2D, pts: Point[], mouse: Point, scale: number) {
+function drawInProgressPolygon(ctx: CanvasRenderingContext2D, pts: Point[], mouse: Point, scale: number, calibration: CalibrationData | null) {
   ctx.save();
   ctx.strokeStyle = '#10B981';
   ctx.fillStyle = '#10B98118';
@@ -1229,6 +1235,14 @@ function drawInProgressPolygon(ctx: CanvasRenderingContext2D, pts: Point[], mous
   ctx.fill();
   ctx.stroke();
   pts.forEach((p) => { ctx.beginPath(); ctx.arc(p.x, p.y, 4 / scale, 0, Math.PI * 2); ctx.fillStyle = '#10B981'; ctx.fill(); });
+  // Live area label at polygon centroid (needs ≥2 placed points to form a triangle with mouse)
+  if (pts.length >= 2) {
+    const allPts = [...pts, mouse];
+    const pxArea = calculatePixelArea(allPts);
+    const label = calibration ? formatArea(pixelAreaToReal(pxArea, calibration), calibration.unit) : `${pxArea.toFixed(0)} px²`;
+    const c = centroid(allPts);
+    drawLabel(ctx, label, c.x, c.y, '#10B981', scale);
+  }
   ctx.restore();
 }
 
